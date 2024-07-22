@@ -1,7 +1,10 @@
 package com.clinton.authorization_server.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
@@ -15,13 +18,23 @@ public class Authorization {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String transactionId;
-    private String senderAccountId;
-    private String receiverAccountId;
-    private Double amount;
+    @Size(min = 10, max = 10)
+    @Column(length = 10)
+    private Integer phoneNumber;
+    @NotNull
+    private Integer senderAccountId;
+    @NotNull
+    private Integer receiverAccountId;
+    @NotNull
+    private BigDecimal amount;
     private String currency;
-    private Status status;
     private LocalDateTime timestamp;
+    @OneToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "outbox_id", referencedColumnName = "id")
+    private Outbox outbox;
+
+    public Authorization() {
+    }
 
     public Long getId() {
         return id;
@@ -31,35 +44,35 @@ public class Authorization {
         this.id = id;
     }
 
-    public String getTransactionId() {
-        return transactionId;
+    public Integer getPhoneNumber() {
+        return phoneNumber;
     }
 
-    public void setTransactionId(String transactionId) {
-        this.transactionId = transactionId;
+    public void setPhoneNumber(Integer phoneNumber) {
+        this.phoneNumber = phoneNumber;
     }
 
-    public String getSenderAccountId() {
+    public Integer getSenderAccountId() {
         return senderAccountId;
     }
 
-    public void setSenderAccountId(String senderAccountId) {
+    public void setSenderAccountId(Integer senderAccountId) {
         this.senderAccountId = senderAccountId;
     }
 
-    public String getReceiverAccountId() {
+    public Integer getReceiverAccountId() {
         return receiverAccountId;
     }
 
-    public void setReceiverAccountId(String receiverAccountId) {
+    public void setReceiverAccountId(Integer receiverAccountId) {
         this.receiverAccountId = receiverAccountId;
     }
 
-    public Double getAmount() {
+    public BigDecimal getAmount() {
         return amount;
     }
 
-    public void setAmount(Double amount) {
+    public void setAmount(BigDecimal amount) {
         this.amount = amount;
     }
 
@@ -71,14 +84,6 @@ public class Authorization {
         this.currency = currency;
     }
 
-    public Status getStatus() {
-        return status;
-    }
-
-    public void setStatus(Status status) {
-        this.status = status;
-    }
-
     public LocalDateTime getTimestamp() {
         return timestamp;
     }
@@ -87,17 +92,16 @@ public class Authorization {
         this.timestamp = timestamp;
     }
 
+    public Outbox getOutbox() {
+        return outbox;
+    }
+
+    public void setOutbox(Outbox outbox) {
+        this.outbox = outbox;
+    }
+
     @Override
     public String toString() {
-        return "Authorization{" +
-                "id=" + id +
-                ", transactionId='" + transactionId + '\'' +
-                ", senderAccountId='" + senderAccountId + '\'' +
-                ", receiverAccountId='" + receiverAccountId + '\'' +
-                ", amount=" + amount +
-                ", currency='" + currency + '\'' +
-                ", status=" + status +
-                ", timestamp=" + timestamp +
-                '}';
+        return "Authorization{" + "id=" + id + ", phoneNumber=" + phoneNumber + ", senderAccountId='" + senderAccountId + '\'' + ", receiverAccountId='" + receiverAccountId + '\'' + ", amount=" + amount + ", currency='" + currency + '\'' + ", timestamp=" + timestamp + ", outbox=" + outbox + '}';
     }
 }
