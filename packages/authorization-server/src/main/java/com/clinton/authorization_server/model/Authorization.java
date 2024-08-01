@@ -2,7 +2,7 @@ package com.clinton.authorization_server.model;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
+import org.hibernate.annotations.ColumnDefault;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -18,9 +18,8 @@ public class Authorization {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Size(min = 10, max = 10)
-    @Column(length = 10)
-    private Integer phoneNumber;
+    @NotNull
+    private String phoneNumber;
     @NotNull
     private Integer senderAccountId;
     @NotNull
@@ -29,11 +28,20 @@ public class Authorization {
     private BigDecimal amount;
     private String currency;
     private LocalDateTime timestamp;
+
+    @ColumnDefault("0")
+    private BigDecimal reservedAmount;
+
     @OneToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "outbox_id", referencedColumnName = "id")
     private Outbox outbox;
 
-    public Authorization() {
+    public BigDecimal getReservedAmount() {
+        return reservedAmount;
+    }
+
+    public void setReservedAmount(BigDecimal reservedAmount) {
+        this.reservedAmount = reservedAmount;
     }
 
     public Long getId() {
@@ -44,11 +52,11 @@ public class Authorization {
         this.id = id;
     }
 
-    public Integer getPhoneNumber() {
+    public String getPhoneNumber() {
         return phoneNumber;
     }
 
-    public void setPhoneNumber(Integer phoneNumber) {
+    public void setPhoneNumber(String phoneNumber) {
         this.phoneNumber = phoneNumber;
     }
 
@@ -102,6 +110,16 @@ public class Authorization {
 
     @Override
     public String toString() {
-        return "Authorization{" + "id=" + id + ", phoneNumber=" + phoneNumber + ", senderAccountId='" + senderAccountId + '\'' + ", receiverAccountId='" + receiverAccountId + '\'' + ", amount=" + amount + ", currency='" + currency + '\'' + ", timestamp=" + timestamp + ", outbox=" + outbox + '}';
+        return "Authorization{" +
+                "id=" + id +
+                ", phoneNumber='" + phoneNumber + '\'' +
+                ", senderAccountId=" + senderAccountId +
+                ", receiverAccountId=" + receiverAccountId +
+                ", amount=" + amount +
+                ", currency='" + currency + '\'' +
+                ", timestamp=" + timestamp +
+                ", reservedAmount=" + reservedAmount +
+                ", outbox=" + outbox +
+                '}';
     }
 }

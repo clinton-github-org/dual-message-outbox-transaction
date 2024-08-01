@@ -19,9 +19,6 @@ public class Outbox {
     @OneToOne(mappedBy = "outbox")
     private Authorization authorization;
 
-    public Outbox() {
-    }
-
     public Long getId() {
         return id;
     }

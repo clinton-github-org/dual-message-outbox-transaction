@@ -1,7 +1,9 @@
 package com.clinton.authorization_server.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
+import org.springframework.validation.annotation.Validated;
 
 import java.math.BigDecimal;
 
@@ -20,9 +22,6 @@ public class Account {
     private String accountType;
     @NotNull
     private BigDecimal accountBalance;
-
-    public Account() {
-    }
 
     public String getAccountName() {
         return accountName;
