@@ -1,0 +1,14 @@
+{
+  "name": "dual-message-outbox-transaction",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "cdk:deploy": "pnpm --prefix infrastructure run deploy",
+    "cdk:synth": "pnpm --prefix infrastructure run synth",
+    "cdk:diff": "pnpm --prefix infrastructure run diff"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
