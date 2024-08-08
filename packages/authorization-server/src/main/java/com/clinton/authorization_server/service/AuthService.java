@@ -6,7 +6,6 @@ import com.clinton.authorization_server.model.Outbox;
 import com.clinton.authorization_server.model.Status;
 import com.clinton.authorization_server.repository.AccountRepository;
 import com.clinton.authorization_server.repository.AuthorizationRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -27,13 +26,15 @@ import java.util.Map;
 @Service
 public class AuthService {
 
+    private final AccountRepository accountRepository;
+    private final AuthorizationRepository authorizationRepository;
     Map<String, String> success = new HashMap<>(1);
     Map<String, String> failure = new HashMap<>(1);
 
-    @Autowired
-    private AccountRepository accountRepository;
-    @Autowired
-    private AuthorizationRepository authorizationRepository;
+    public AuthService(AccountRepository _accountRepository, AuthorizationRepository _authorizationRepository) {
+        this.accountRepository = _accountRepository;
+        this.authorizationRepository = _authorizationRepository;
+    }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_UNCOMMITTED, timeout = 180, rollbackFor = {DataAccessException.class, SQLException.class, TransactionException.class})
     public ResponseEntity<Map<String, String>> authorizePaymentTransaction(Authorization authorization) throws SQLException {

@@ -20,9 +20,13 @@ import java.util.Map;
 @RequestMapping("/api/v1/account")
 public class AccountController {
 
+    private final AccountService accountService;
     Map<String, String> failure = new HashMap<>(1);
+
     @Autowired
-    private AccountService accountService;
+    public AccountController(AccountService _accountService) {
+        this.accountService = _accountService;
+    }
 
     @PostMapping(path = "/", produces = "application/json")
     @ControllerAnnotations.AddAccountDoc

@@ -27,8 +27,12 @@ public class AccountService {
 
     Map<String, String> success = new HashMap<>(1);
     Map<String, String> failure = new HashMap<>(1);
+    private final AccountRepository accountRepository;
+
     @Autowired
-    private AccountRepository accountRepository;
+    public AccountService(AccountRepository _accountRepository) {
+        this.accountRepository = _accountRepository;
+    }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.SERIALIZABLE)
     public ResponseEntity<Map<String, String>> createAccount(Account account) {
@@ -81,5 +85,15 @@ public class AccountService {
     @Transactional(readOnly = true, propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED)
     public boolean checkAccount(Integer accountId) {
         return accountRepository.findById(accountId).isPresent();
+    }
+
+    @Transactional(readOnly = true, propagation = Propagation.REQUIRED, isolation = Isolation.READ_COMMITTED)
+    public Account findAccount(Integer accountId) {
+        Optional<Account> optionalAccount = accountRepository.findById(accountId);
+        if (optionalAccount.isPresent()) {
+            return optionalAccount.get();
+        } else {
+            throw new RuntimeException("Account Id: " + accountId + " not found");
+        }
     }
 }
