@@ -24,14 +24,15 @@ public class LoggingAspect {
     }
 
     @Around("logPoints()")
-    public Object printLogs(ProceedingJoinPoint joinPoint) {
+    public Object printLogs(ProceedingJoinPoint joinPoint) throws Throwable {
         Object object;
         String logString = MessageFormat.format("Starting Execution of Class: {0}, Method: {1}", joinPoint.getTarget().getClass().getName(), joinPoint.getSignature().getName());
         LOG.info(logString);
         try {
             object = joinPoint.proceed();
         } catch (Throwable e) {
-            throw new RuntimeException(e);
+            LOG.error("Exception occurred during method execution: " + e.getMessage(), e);
+            throw e;
         }
         logString = logString.replace("Starting", "Ending");
         LOG.info(logString);

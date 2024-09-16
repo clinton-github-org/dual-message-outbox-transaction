@@ -6,19 +6,19 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Async;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.services.sns.SnsClient;
 import software.amazon.awssdk.services.sns.model.PublishRequest;
 import software.amazon.awssdk.services.sns.model.PublishResponse;
 
 import java.text.MessageFormat;
-import java.util.concurrent.CompletableFuture;
 
 /**
  * @author Clinton Fernandes
  */
 @Service
+@Profile("auth")
 public class SendNotificationToSNS {
 
     private static final Logger LOG = LoggerFactory.getLogger(SendNotificationToSNS.class);
@@ -32,14 +32,12 @@ public class SendNotificationToSNS {
         this.snsClient = _snsClient.getSNSClient();
     }
 
-    @Async
-    public CompletableFuture<Void> sendNotification(String message, String subject, String phoneNumber) {
-        LOG.info("Sending notification to ");
+    public void sendNotification(String message, String subject, String phoneNumber) {
+        LOG.info("Sending notification to " + phoneNumber);
 
         PublishRequest request = PublishRequest.builder().message(message).subject(subject).topicArn(snsTopicArn).phoneNumber(phoneNumber).build();
         PublishResponse response = snsClient.publish(request);
 
         LOG.info(MessageFormat.format("Message sent to {0} with ID {1} and status: {2}", phoneNumber, response.messageId(), response.sdkHttpResponse().statusCode()));
-        return CompletableFuture.completedFuture(null);
     }
 }

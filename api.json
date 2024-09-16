@@ -35,10 +35,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object",
-                                    "additionalProperties": {
-                                        "type": "string"
-                                    }
+                                    "type": "string"
                                 }
                             }
                         }
@@ -48,10 +45,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object",
-                                    "additionalProperties": {
-                                        "type": "string"
-                                    }
+                                    "type": "string"
                                 }
                             }
                         }
@@ -88,30 +82,10 @@
                 ],
                 "responses": {
                     "204": {
-                        "description": "Successful Operation",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "additionalProperties": {
-                                        "type": "string"
-                                    }
-                                }
-                            }
-                        }
+                        "description": "Successful Operation"
                     },
                     "500": {
-                        "description": "Internal Server Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "additionalProperties": {
-                                        "type": "string"
-                                    }
-                                }
-                            }
-                        }
+                        "description": "Internal Server Error"
                     }
                 }
             }
@@ -149,10 +123,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object",
-                                    "additionalProperties": {
-                                        "type": "string"
-                                    }
+                                    "type": "string"
                                 }
                             }
                         }
@@ -162,10 +133,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object",
-                                    "additionalProperties": {
-                                        "type": "string"
-                                    }
+                                    "type": "string"
                                 }
                             }
                         }
@@ -178,8 +146,8 @@
                 "tags": [
                     "account-controller"
                 ],
-                "summary": "create an account",
-                "description": "creates a new account",
+                "summary": "Account Creation",
+                "description": "Creates a new account with unique account ID",
                 "operationId": "addAccount",
                 "requestBody": {
                     "content": {
@@ -193,14 +161,11 @@
                 },
                 "responses": {
                     "201": {
-                        "description": "Successful Operation",
+                        "description": "Successful Creation",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object",
-                                    "additionalProperties": {
-                                        "type": "string"
-                                    }
+                                    "$ref": "#/components/schemas/Account"
                                 }
                             }
                         }
@@ -210,10 +175,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object",
-                                    "additionalProperties": {
-                                        "type": "string"
-                                    }
+                                    "$ref": "#/components/schemas/Account"
                                 }
                             }
                         }
@@ -242,30 +204,10 @@
                 ],
                 "responses": {
                     "204": {
-                        "description": "Successful Operation",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "additionalProperties": {
-                                        "type": "string"
-                                    }
-                                }
-                            }
-                        }
+                        "description": "Successful Operation"
                     },
                     "500": {
-                        "description": "Internal Server Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "additionalProperties": {
-                                        "type": "string"
-                                    }
-                                }
-                            }
-                        }
+                        "description": "Internal Server Error"
                     }
                 }
             }
@@ -276,7 +218,6 @@
             "Authorization": {
                 "required": [
                     "amount",
-                    "phoneNumber",
                     "receiverAccountId",
                     "senderAccountId"
                 ],
@@ -285,9 +226,6 @@
                     "id": {
                         "type": "integer",
                         "format": "int64"
-                    },
-                    "phoneNumber": {
-                        "type": "string"
                     },
                     "senderAccountId": {
                         "type": "integer",
@@ -300,15 +238,9 @@
                     "amount": {
                         "type": "number"
                     },
-                    "currency": {
-                        "type": "string"
-                    },
                     "timestamp": {
                         "type": "string",
                         "format": "date-time"
-                    },
-                    "reservedAmount": {
-                        "type": "number"
                     },
                     "outbox": {
                         "$ref": "#/components/schemas/Outbox"
@@ -338,9 +270,8 @@
             },
             "Account": {
                 "required": [
-                    "accountBalance",
                     "accountName",
-                    "accountType"
+                    "phoneNumber"
                 ],
                 "type": "object",
                 "properties": {
@@ -356,6 +287,12 @@
                     },
                     "accountBalance": {
                         "type": "number"
+                    },
+                    "reservedAmount": {
+                        "type": "number"
+                    },
+                    "phoneNumber": {
+                        "type": "string"
                     }
                 }
             }
