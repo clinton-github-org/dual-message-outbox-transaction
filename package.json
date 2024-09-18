@@ -8,7 +8,7 @@
     "cdk:deploy": "pnpm --prefix infrastructure run deploy",
     "cdk:synth": "pnpm --prefix infrastructure run synth",
     "cdk:destroy": "pnpm --prefix infrastructure run destroy",
-    "build": "cd packages/authorization-server && mvn clean package -Dspring.profiles.active=auth && mvn  package -Dspring.profiles.active=polling"
+    "build": "cd packages/authorization-server && mvn clean package -P auth && mvn package -P polling"
   },
   "keywords": [],
   "author": "",
