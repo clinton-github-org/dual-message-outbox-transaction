@@ -21,8 +21,16 @@ jobs:
       LoadBalancerUrl: ${{ steps.get-outputs.outputs.LoadBalancerUrl }}
 
     steps:
-     - name: Checkout code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+
+      - name: Validate Password
+        id: password-check
+        run: |
+          if [ "${{ github.event.inputs.password }}" != "${{ secrets.DEPLOY_PASSWORD }}" ]; then
+            echo "Invalid password"
+            exit 1
+          fi
+          echo "Password validated successfully"
 
       - name: Use Node.js 18.x
         uses: actions/setup-node@v3
@@ -41,15 +49,6 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install
-
-      - name: Validate Password
-        id: password-check
-        run: |
-          if [ "${{ github.event.inputs.password }}" != "${{ secrets.DEPLOY_PASSWORD }}" ]; then
-            echo "Invalid password"
-            exit 1
-          fi
-          echo "Password validated successfully"
 
       - uses: actions/setup-java@v3
         with:
