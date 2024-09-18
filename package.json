@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "cdk:build": "pnpm --prefix infrastructure run build",
     "cdk:deploy": "pnpm --prefix infrastructure run deploy",
     "cdk:synth": "pnpm --prefix infrastructure run synth",
     "cdk:diff": "pnpm --prefix infrastructure run diff",
