@@ -1,6 +1,6 @@
 import { CfnOutput, Duration, Stack, StackProps, aws_ec2 } from 'aws-cdk-lib';
 import { Vpc } from 'aws-cdk-lib/aws-ec2';
-import { Cluster, ContainerDefinition, ContainerImage, FargateService, FargateTaskDefinition } from 'aws-cdk-lib/aws-ecs';
+import { Cluster, ContainerDefinition, ContainerImage, FargateService, FargateTaskDefinition, PortMap } from 'aws-cdk-lib/aws-ecs';
 import { ApplicationLoadBalancedFargateService } from 'aws-cdk-lib/aws-ecs-patterns';
 import { Rule, Schedule } from 'aws-cdk-lib/aws-events';
 import { EcsTask, SnsTopic } from 'aws-cdk-lib/aws-events-targets';
@@ -71,9 +71,12 @@ export class InfrastructureStack extends Stack {
     this.authTaskDefinition.addToTaskRolePolicy(snsPublishPolicy);
 
     this.authorizationContainer = this.authTaskDefinition.addContainer('auth-container', {
-      image: ContainerImage.fromAsset(path.join(__dirname, '../packages/authorization-server'), {
+      image: ContainerImage.fromAsset(path.join(__dirname, '../../packages/authorization-server'), {
         file: 'DockerFile.auth'
       }),
+      portMappings: [{
+        containerPort: 8080
+      }],
       memoryLimitMiB: 512,
       environment: {
         'spring.profiles.active': 'auth',
@@ -107,9 +110,12 @@ export class InfrastructureStack extends Stack {
     this.pollingTaskDefinition.addToTaskRolePolicy(sqsPublishPolicy);
 
     this.pollingContainer = this.pollingTaskDefinition.addContainer('polling-container', {
-      image: ContainerImage.fromAsset(path.join(__dirname, '../packages/authorization-server'), {
+      image: ContainerImage.fromAsset(path.join(__dirname, '../../packages/authorization-server'), {
         file: 'DockerFile.polling'
       }),
+      portMappings: [{
+        containerPort: 8081
+      }],
       memoryLimitMiB: 512,
       environment: {
         'spring.profiles.active': 'polling',
