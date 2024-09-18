@@ -7,7 +7,7 @@
     "cdk:build": "pnpm --prefix infrastructure run build",
     "cdk:deploy": "pnpm --prefix infrastructure run deploy",
     "cdk:synth": "pnpm --prefix infrastructure run synth",
-    "cdk:diff": "pnpm --prefix infrastructure run diff",
+    "cdk:destroy": "pnpm --prefix infrastructure run destroy",
     "build": "cd packages/authorization-server && mvn clean install -P auth,polling"
   },
   "keywords": [],
