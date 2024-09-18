@@ -38,6 +38,7 @@ export class InfrastructureStack extends Stack {
           cidrMask: 24,
           name: 'public-subnet',
           subnetType: SubnetType.PUBLIC,
+
         },
       ],
     });
@@ -86,7 +87,7 @@ export class InfrastructureStack extends Stack {
 
     this.authTaskDefinition = new FargateTaskDefinition(this, 'authorization-task-definition', {
       cpu: 256,
-      memoryLimitMiB: 512,
+      memoryLimitMiB: 1024
     });
 
     const snsPublishPolicy = new PolicyStatement({
@@ -124,7 +125,9 @@ export class InfrastructureStack extends Stack {
       cluster: this.ecsCluster,
       taskDefinition: this.authTaskDefinition,
       publicLoadBalancer: true,
-      desiredCount: 1
+      desiredCount: 1,
+      vpc: this.vpc,
+      assignPublicIp: true
     });
 
     this.authService.targetGroup.configureHealthCheck({
@@ -141,7 +144,7 @@ export class InfrastructureStack extends Stack {
 
     this.pollingTaskDefinition = new FargateTaskDefinition(this, 'polling-task-definition', {
       cpu: 256,
-      memoryLimitMiB: 512,
+      memoryLimitMiB: 1024,
     });
 
     const sqsPublishPolicy = new PolicyStatement({
@@ -168,6 +171,7 @@ export class InfrastructureStack extends Stack {
       cluster: this.ecsCluster,
       taskDefinition: this.pollingTaskDefinition,
       desiredCount: 0,
+      assignPublicIp: true
     });
 
     this.pollingRule.addTarget(new EcsTask({
@@ -176,6 +180,7 @@ export class InfrastructureStack extends Stack {
         subnetType: SubnetType.PUBLIC,
       },
       taskDefinition: this.pollingTaskDefinition,
+      assignPublicIp: true
     }));
 
     new CfnOutput(this, 'LoadBalancerUrl', {
