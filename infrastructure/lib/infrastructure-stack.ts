@@ -126,7 +126,6 @@ export class InfrastructureStack extends Stack {
       taskDefinition: this.authTaskDefinition,
       publicLoadBalancer: true,
       desiredCount: 1,
-      vpc: this.vpc,
       assignPublicIp: true
     });
 
