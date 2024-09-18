@@ -91,6 +91,12 @@ export class InfrastructureStack extends Stack {
       desiredCount: 1
     });
 
+    this.authService.targetGroup.configureHealthCheck({
+      path: '/actuator/health',
+      interval: Duration.seconds(300),
+      timeout: Duration.seconds(20),
+    });
+
     // ----------- Polling: Scheduled Service ------------
     this.pollingRule = new Rule(this, 'polling-rule', {
       schedule: Schedule.expression('cron(0 */5 * ? * ?)')
@@ -126,7 +132,7 @@ export class InfrastructureStack extends Stack {
     this.pollingService = new FargateService(this, 'polling-service', {
       cluster: this.ecsCluster,
       taskDefinition: this.pollingTaskDefinition,
-      desiredCount: 0
+      desiredCount: 0,
     });
 
     this.pollingRule.addTarget(new EcsTask(
