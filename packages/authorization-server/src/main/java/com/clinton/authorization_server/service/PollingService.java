@@ -33,7 +33,7 @@ public class PollingService {
         this.sendMessageToSQS = _sendMessageToSQS;
     }
 
-    @Scheduled(cron = "0 * * * * ?")
+    @Scheduled(cron = "0 */5 * * * ?")
     public void pollOutboxAndSendToSqs() {
         LOG.info("Starting polling execution...");
         try {
