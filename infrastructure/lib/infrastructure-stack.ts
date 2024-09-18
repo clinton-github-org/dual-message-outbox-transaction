@@ -28,7 +28,7 @@ export class InfrastructureStack extends Stack {
     super(scope, id, props);
 
     this.vpc = new Vpc(this, 'payment-vpc', {
-      maxAzs: 1,
+      maxAzs: 2,
       natGateways: 0,
       subnetConfiguration: [
         {
