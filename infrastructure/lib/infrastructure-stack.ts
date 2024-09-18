@@ -1,5 +1,5 @@
 import { CfnOutput, Duration, Stack, StackProps } from 'aws-cdk-lib';
-import { SecurityGroup, SubnetType, Vpc } from 'aws-cdk-lib/aws-ec2';
+import { Peer, Port, SecurityGroup, SubnetType, Vpc } from 'aws-cdk-lib/aws-ec2';
 import { Cluster, ContainerDefinition, ContainerImage, FargateService, FargateTaskDefinition } from 'aws-cdk-lib/aws-ecs';
 import { ApplicationLoadBalancedFargateService } from 'aws-cdk-lib/aws-ecs-patterns';
 import { Rule, Schedule } from 'aws-cdk-lib/aws-events';
@@ -42,6 +42,9 @@ export class InfrastructureStack extends Stack {
       ],
     });
 
+    const auroraSecurityGroup = new SecurityGroup(this, 'aurora-security-group', { vpc: this.vpc });
+    auroraSecurityGroup.addIngressRule(Peer.anyIpv4(), Port.tcp(3306), 'Allow MySQL access');
+
     this.snsTopic = new SnsTopic(new Topic(this, 'notification-topic', {
       displayName: 'SMS Notification Topic'
     }), {
@@ -57,15 +60,15 @@ export class InfrastructureStack extends Stack {
       engine: 'aurora-mysql',
       engineMode: 'serverless',
       databaseName: 'authorization',
-      masterUsername: process.env.DB_USERNAME,
-      masterUserPassword: process.env.DB_PASSWORD,
+      masterUsername: process.env.DB_USERNAME!,
+      masterUserPassword: process.env.DB_PASSWORD!,
       scalingConfiguration: {
         autoPause: true,
         minCapacity: 2,
         maxCapacity: 2,
         secondsUntilAutoPause: 300,
       },
-      vpcSecurityGroupIds: [new SecurityGroup(this, 'aurora-security-group', { vpc: this.vpc }).securityGroupId],
+      vpcSecurityGroupIds: [auroraSecurityGroup.securityGroupId],
       dbSubnetGroupName: new CfnDBSubnetGroup(this, 'aurora-subnet-group', {
         dbSubnetGroupDescription: 'Subnet group for Aurora DB',
         subnetIds: this.vpc.selectSubnets({ subnetType: SubnetType.PUBLIC }).subnetIds,
@@ -96,9 +99,7 @@ export class InfrastructureStack extends Stack {
       image: ContainerImage.fromAsset(path.join(__dirname, '../../packages/authorization-server'), {
         file: 'DockerFile.auth'
       }),
-      portMappings: [{
-        containerPort: 8080
-      }],
+      portMappings: [{ containerPort: 8080 }],
       memoryLimitMiB: 512,
       environment: {
         'SPRING_PROFILES_ACTIVE': 'auth',
@@ -127,8 +128,9 @@ export class InfrastructureStack extends Stack {
     });
 
     // ----------- Polling: Scheduled Service ------------
+
     this.pollingRule = new Rule(this, 'polling-rule', {
-      schedule: Schedule.expression('cron(0 */5 * ? * ?)')
+      schedule: Schedule.expression('cron(0 */5 * ? * ?)'),
     });
 
     this.pollingTaskDefinition = new FargateTaskDefinition(this, 'polling-task-definition', {
@@ -148,9 +150,7 @@ export class InfrastructureStack extends Stack {
       image: ContainerImage.fromAsset(path.join(__dirname, '../../packages/authorization-server'), {
         file: 'DockerFile.polling'
       }),
-      portMappings: [{
-        containerPort: 8081
-      }],
+      portMappings: [{ containerPort: 8081 }],
       memoryLimitMiB: 512,
       environment: {
         'SPRING_PROFILES_ACTIVE': 'polling',
@@ -164,20 +164,17 @@ export class InfrastructureStack extends Stack {
       desiredCount: 0,
     });
 
-    this.pollingRule.addTarget(new EcsTask(
-      {
-        cluster: this.ecsCluster,
-        subnetSelection: {
-          subnetType: SubnetType.PUBLIC,
-        },
-        assignPublicIp: true,
-        taskDefinition: this.pollingTaskDefinition,
-      }
-    ));
+    this.pollingRule.addTarget(new EcsTask({
+      cluster: this.ecsCluster,
+      subnetSelection: {
+        subnetType: SubnetType.PUBLIC,
+      },
+      taskDefinition: this.pollingTaskDefinition,
+    }));
 
     new CfnOutput(this, 'LoadBalancerUrl', {
       value: `http://${this.authService.loadBalancer.loadBalancerDnsName}`,
       description: 'The URL of the Application Load Balancer',
     });
   }
-}
+};
