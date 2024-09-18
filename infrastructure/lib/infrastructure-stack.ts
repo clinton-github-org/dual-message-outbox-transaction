@@ -1,10 +1,11 @@
 import { CfnOutput, Duration, Stack, StackProps } from 'aws-cdk-lib';
-import { SubnetType, Vpc } from 'aws-cdk-lib/aws-ec2';
+import { SecurityGroup, SubnetType, Vpc } from 'aws-cdk-lib/aws-ec2';
 import { Cluster, ContainerDefinition, ContainerImage, FargateService, FargateTaskDefinition } from 'aws-cdk-lib/aws-ecs';
 import { ApplicationLoadBalancedFargateService } from 'aws-cdk-lib/aws-ecs-patterns';
 import { Rule, Schedule } from 'aws-cdk-lib/aws-events';
 import { EcsTask, SnsTopic } from 'aws-cdk-lib/aws-events-targets';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import { CfnDBCluster, CfnDBSubnetGroup } from 'aws-cdk-lib/aws-rds';
 import { Topic } from 'aws-cdk-lib/aws-sns';
 import { Queue } from 'aws-cdk-lib/aws-sqs';
 import { Construct } from 'constructs';
@@ -13,6 +14,8 @@ import path = require('path');
 export class InfrastructureStack extends Stack {
   public vpc: Vpc;
   public readonly ecsCluster: Cluster;
+  public readonly rdsCluster: CfnDBCluster;
+
   public readonly authTaskDefinition: FargateTaskDefinition;
   public readonly authorizationContainer: ContainerDefinition;
   public readonly snsTopic: SnsTopic;
@@ -50,6 +53,25 @@ export class InfrastructureStack extends Stack {
       retentionPeriod: Duration.minutes(60)
     });
 
+    this.rdsCluster = new CfnDBCluster(this, 'payment-db-cluster', {
+      engine: 'aurora-mysql',
+      engineMode: 'serverless',
+      databaseName: 'authorization',
+      masterUsername: process.env.DB_USERNAME,
+      masterUserPassword: process.env.DB_PASSWORD,
+      scalingConfiguration: {
+        autoPause: true,
+        minCapacity: 2,
+        maxCapacity: 2,
+        secondsUntilAutoPause: 300,
+      },
+      vpcSecurityGroupIds: [new SecurityGroup(this, 'aurora-security-group', { vpc: this.vpc }).securityGroupId],
+      dbSubnetGroupName: new CfnDBSubnetGroup(this, 'aurora-subnet-group', {
+        dbSubnetGroupDescription: 'Subnet group for Aurora DB',
+        subnetIds: this.vpc.selectSubnets({ subnetType: SubnetType.PUBLIC }).subnetIds,
+      }).ref,
+    });
+
     // ----------- Authorization: Continuous Service with Load Balancer ------------
 
     this.ecsCluster = new Cluster(this, 'authorization-cluster', {
@@ -79,8 +101,15 @@ export class InfrastructureStack extends Stack {
       }],
       memoryLimitMiB: 512,
       environment: {
-        'spring.profiles.active': 'auth',
-        'NOTIFICATION.TOPIC.ARN': this.snsTopic.topic.topicArn
+        'SPRING_PROFILES_ACTIVE': 'auth',
+        'NOTIFICATION_TOPIC_ARN': this.snsTopic.topic.topicArn,
+        'SPRING_DATASOURCE_URL': `jdbc:mysql://${this.rdsCluster.attrEndpoint}:3306/authorization`,
+        'SPRING_DATASOURCE_USERNAME': process.env.DB_USERNAME!,
+        'SPRING_DATASOURCE_PASSWORD': process.env.DB_PASSWORD!,
+        'SPRING_JPA_DATABASE_PLATFORM': 'org.hibernate.dialect.MySQL8Dialect',
+        'SPRING_JPA_HIBERNATE_DDL_AUTO': 'update',
+        'SPRING_JPA_SHOW_SQL': 'false',
+        'SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL': 'true'
       }
     });
 
@@ -124,8 +153,8 @@ export class InfrastructureStack extends Stack {
       }],
       memoryLimitMiB: 512,
       environment: {
-        'spring.profiles.active': 'polling',
-        'POLLING.QUEUE.URL': this.pollingQueue.queueUrl
+        'SPRING_PROFILES_ACTIVE': 'polling',
+        'POLLING_QUEUE_URL': this.pollingQueue.queueUrl
       }
     });
 

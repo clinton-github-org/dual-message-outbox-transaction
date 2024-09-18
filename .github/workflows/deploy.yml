@@ -16,9 +16,11 @@ jobs:
     strategy:
       matrix:
         node-version: [20]
-    env: 
+    env:
       CDK_DEFAULT_ACCOUNT: ${{ secrets.CDK_DEFAULT_ACCOUNT }}
       CDK_DEFAULT_REGION: ${{ secrets.CDK_DEFAULT_REGION }}
+      DB_USERNAME: ${{ secrets.DB_USERNAME }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
 
     outputs:
       LoadBalancerUrl: ${{ steps.get-outputs.outputs.LoadBalancerUrl }}
@@ -47,7 +49,7 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'pnpm'
-          
+
       - name: Install dependencies
         run: pnpm install
 
@@ -65,7 +67,7 @@ jobs:
         with:
           role-to-assume: ${{ secrets.OIDC_GITHUB_AWS_ROLE }}
           aws-region: ap-south-1
-        
+
       - name: Build CDK
         run: pnpm run cdk:build
 
