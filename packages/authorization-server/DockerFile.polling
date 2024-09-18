@@ -2,7 +2,7 @@ FROM amazoncorretto:21
 
 WORKDIR /app
 
-COPY target/polling-jar.jar /app/polling.jar
+COPY target/polling.jar /app/polling.jar
 
 EXPOSE 8080
 

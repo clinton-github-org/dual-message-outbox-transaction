@@ -2,7 +2,7 @@ FROM amazoncorretto:21
 
 WORKDIR /app
 
-COPY target/auth-jar.jar /app/auth.jar
+COPY target/auth.jar /app/auth.jar
 
 EXPOSE 8080
 

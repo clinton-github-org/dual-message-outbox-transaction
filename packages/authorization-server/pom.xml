@@ -107,7 +107,7 @@
         <profile>
             <id>auth</id>
             <build>
-                <finalName>auth-jar</finalName>
+                <finalName>auth</finalName>
                 <plugins>
                     <plugin>
                         <groupId>org.springframework.boot</groupId>
@@ -122,7 +122,7 @@
         <profile>
             <id>polling</id>
             <build>
-                <finalName>polling-jar</finalName>
+                <finalName>polling</finalName>
                 <plugins>
                     <plugin>
                         <groupId>org.springframework.boot</groupId>
