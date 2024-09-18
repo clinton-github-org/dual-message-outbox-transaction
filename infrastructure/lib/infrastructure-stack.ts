@@ -22,8 +22,6 @@ export class InfrastructureStack extends Stack {
   public readonly snsTopic: SnsTopic;
   public readonly authService: ApplicationLoadBalancedFargateService;
 
-  public readonly pollingRule: Rule;
-  public readonly pollingTaskDefinition: FargateTaskDefinition;
   public readonly pollingContainer: ContainerDefinition;
   public readonly pollingService: FargateService;
   public readonly pollingQueue: Queue;
@@ -147,23 +145,13 @@ export class InfrastructureStack extends Stack {
     });
 
     // ----------- Polling: Scheduled Service ------------
-
-    this.pollingRule = new Rule(this, 'polling-rule', {
-      schedule: Schedule.expression('cron(0 */5 * ? * ?)'),
-    });
-
-    this.pollingTaskDefinition = new FargateTaskDefinition(this, 'polling-task-definition', {
-      cpu: 256,
-      memoryLimitMiB: 1024,
-    });
-
     const sqsPublishPolicy = new PolicyStatement({
       effect: Effect.ALLOW,
       actions: ['sqs:SendMessage'],
       resources: [this.pollingQueue.queueArn]
     });
 
-    this.pollingTaskDefinition.addToTaskRolePolicy(sqsPublishPolicy);
+    this.authTaskDefinition.addToTaskRolePolicy(sqsPublishPolicy);
 
     const pollingLogGroup = new LogGroup(this, 'PollingContainerLogGroup', {
       logGroupName: '/ecs/polling-server',
@@ -171,7 +159,7 @@ export class InfrastructureStack extends Stack {
       removalPolicy: RemovalPolicy.DESTROY
     });
 
-    this.pollingContainer = this.pollingTaskDefinition.addContainer('polling-container', {
+    this.pollingContainer = this.authTaskDefinition.addContainer('polling-container', {
       image: ContainerImage.fromAsset(path.join(__dirname, '../../packages/authorization-server'), {
         file: 'DockerFile.polling'
       }),
@@ -189,19 +177,10 @@ export class InfrastructureStack extends Stack {
 
     this.pollingService = new FargateService(this, 'polling-service', {
       cluster: this.ecsCluster,
-      taskDefinition: this.pollingTaskDefinition,
-      desiredCount: 0,
+      taskDefinition: this.authTaskDefinition,
+      desiredCount: 1,
       assignPublicIp: true,
     });
-
-    this.pollingRule.addTarget(new EcsTask({
-      cluster: this.ecsCluster,
-      subnetSelection: {
-        subnetType: SubnetType.PUBLIC,
-      },
-      taskDefinition: this.pollingTaskDefinition,
-      assignPublicIp: true
-    }));
 
     new CfnOutput(this, 'LoadBalancerUrl', {
       value: `http://${this.authService.loadBalancer.loadBalancerDnsName}`,
