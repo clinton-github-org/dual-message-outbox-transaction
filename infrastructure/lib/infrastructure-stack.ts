@@ -104,9 +104,9 @@ export class InfrastructureStack extends Stack {
       environment: {
         'SPRING_PROFILES_ACTIVE': 'auth',
         'NOTIFICATION_TOPIC_ARN': this.snsTopic.topic.topicArn,
-        // 'SPRING_DATASOURCE_URL': `jdbc:mysql://${this.rdsCluster.attrEndpoint}:3306/authorization`,
-        // 'SPRING_DATASOURCE_USERNAME': process.env.DB_USERNAME!,
-        // 'SPRING_DATASOURCE_PASSWORD': process.env.DB_PASSWORD!,
+        'SPRING_DATASOURCE_URL': 'jdbc:mysql://' + this.rdsCluster.attrEndpoint + ':3306/authorization',
+        'SPRING_DATASOURCE_USERNAME': process.env.DB_USERNAME!,
+        'SPRING_DATASOURCE_PASSWORD': process.env.DB_PASSWORD!,
         'SPRING_JPA_DATABASE_PLATFORM': 'org.hibernate.dialect.MySQL8Dialect',
         'SPRING_JPA_HIBERNATE_DDL_AUTO': 'update',
         'SPRING_JPA_SHOW_SQL': 'false',
