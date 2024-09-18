@@ -1,10 +1,11 @@
 import { CfnOutput, Duration, Fn, Stack, StackProps } from 'aws-cdk-lib';
 import { Peer, Port, SecurityGroup, SubnetType, Vpc } from 'aws-cdk-lib/aws-ec2';
-import { Cluster, ContainerDefinition, ContainerImage, FargateService, FargateTaskDefinition } from 'aws-cdk-lib/aws-ecs';
+import { Cluster, ContainerDefinition, ContainerImage, FargateService, FargateTaskDefinition, LogDriver } from 'aws-cdk-lib/aws-ecs';
 import { ApplicationLoadBalancedFargateService } from 'aws-cdk-lib/aws-ecs-patterns';
 import { Rule, Schedule } from 'aws-cdk-lib/aws-events';
 import { EcsTask, SnsTopic } from 'aws-cdk-lib/aws-events-targets';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { CfnDBCluster, CfnDBSubnetGroup } from 'aws-cdk-lib/aws-rds';
 import { Topic } from 'aws-cdk-lib/aws-sns';
 import { Queue } from 'aws-cdk-lib/aws-sqs';
@@ -98,12 +99,21 @@ export class InfrastructureStack extends Stack {
 
     this.authTaskDefinition.addToTaskRolePolicy(snsPublishPolicy);
 
+    const authLogGroup = new LogGroup(this, 'AuthContainerLogGroup', {
+      logGroupName: '/ecs/authorization-server',
+      retention: RetentionDays.ONE_DAY,
+    });
+
     this.authorizationContainer = this.authTaskDefinition.addContainer('auth-container', {
       image: ContainerImage.fromAsset(path.join(__dirname, '../../packages/authorization-server'), {
         file: 'DockerFile.auth'
       }),
       portMappings: [{ containerPort: 8080 }],
       memoryLimitMiB: 512,
+      logging: LogDriver.awsLogs({
+        streamPrefix: 'auth',
+        logGroup: authLogGroup
+      }),
       environment: {
         'SPRING_PROFILES_ACTIVE': 'auth',
         'NOTIFICATION_TOPIC_ARN': this.snsTopic.topic.topicArn,
@@ -154,9 +164,18 @@ export class InfrastructureStack extends Stack {
 
     this.pollingTaskDefinition.addToTaskRolePolicy(sqsPublishPolicy);
 
+    const pollingLogGroup = new LogGroup(this, 'PollingContainerLogGroup', {
+      logGroupName: '/ecs/polling-server',
+      retention: RetentionDays.ONE_DAY,
+    });
+
     this.pollingContainer = this.pollingTaskDefinition.addContainer('polling-container', {
       image: ContainerImage.fromAsset(path.join(__dirname, '../../packages/authorization-server'), {
         file: 'DockerFile.polling'
+      }),
+      logging: LogDriver.awsLogs({
+        streamPrefix: 'polling',
+        logGroup: pollingLogGroup
       }),
       portMappings: [{ containerPort: 8081 }],
       memoryLimitMiB: 512,
@@ -170,7 +189,7 @@ export class InfrastructureStack extends Stack {
       cluster: this.ecsCluster,
       taskDefinition: this.pollingTaskDefinition,
       desiredCount: 0,
-      assignPublicIp: true
+      assignPublicIp: true,
     });
 
     this.pollingRule.addTarget(new EcsTask({
