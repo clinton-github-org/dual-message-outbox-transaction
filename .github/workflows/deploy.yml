@@ -37,6 +37,9 @@ jobs:
         with:
           node-version: '18.x'
 
+      - name: Install pnpm
+        run: npm install -g pnpm
+
       - name: Cache pnpm modules
         uses: actions/cache@v3
         with:
