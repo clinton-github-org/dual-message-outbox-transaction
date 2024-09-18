@@ -39,7 +39,9 @@ public class PollingService {
         try {
             List<Long> authorizedTransactions = this.getAllAuthorizedTransactionsFromDB();
             LOG.info("Found entries " + authorizedTransactions.size());
-            sendMessageToSQS.sendMessageInBatch(authorizedTransactions);
+            if (authorizedTransactions.size() > 0) {
+                sendMessageToSQS.sendMessageInBatch(authorizedTransactions);
+            }
         } catch (Exception exception) {
             LOG.error("Polling failed! ", exception.getMessage(), exception);
             throw new RuntimeException();
