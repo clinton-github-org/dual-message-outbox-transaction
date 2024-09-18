@@ -71,7 +71,7 @@ export class InfrastructureStack extends Stack {
     this.authTaskDefinition.addToTaskRolePolicy(snsPublishPolicy);
 
     this.authorizationContainer = this.authTaskDefinition.addContainer('auth-container', {
-      image: ContainerImage.fromAsset(path.join(__dirname, '../packages/authorization-server'), {
+      image: ContainerImage.fromAsset(path.join(__dirname, 'packages/authorization-server'), {
         file: 'DockerFile.auth'
       }),
       memoryLimitMiB: 512,
@@ -107,7 +107,7 @@ export class InfrastructureStack extends Stack {
     this.pollingTaskDefinition.addToTaskRolePolicy(sqsPublishPolicy);
 
     this.pollingContainer = this.pollingTaskDefinition.addContainer('polling-container', {
-      image: ContainerImage.fromAsset(path.join(__dirname, '../packages/authorization-server'), {
+      image: ContainerImage.fromAsset(path.join(__dirname, 'packages/authorization-server'), {
         file: 'DockerFile.polling'
       }),
       memoryLimitMiB: 512,
