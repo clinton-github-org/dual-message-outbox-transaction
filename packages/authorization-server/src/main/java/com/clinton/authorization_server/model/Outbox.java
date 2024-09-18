@@ -19,6 +19,14 @@ public class Outbox {
     @OneToOne(mappedBy = "outbox")
     private Authorization authorization;
 
+    public Outbox() {
+    }
+
+    public Outbox(Status status, Authorization authorization) {
+        this.status = status;
+        this.authorization = authorization;
+    }
+
     public Long getId() {
         return id;
     }
@@ -45,10 +53,6 @@ public class Outbox {
 
     @Override
     public String toString() {
-        return "Outbox{" +
-                "id=" + id +
-                ", status=" + status +
-                ", authorization=" + authorization +
-                '}';
+        return "Outbox{" + "id=" + id + ", status=" + status + ", authorization=" + authorization + '}';
     }
 }

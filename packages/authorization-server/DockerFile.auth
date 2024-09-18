@@ -1,0 +1,11 @@
+FROM amazoncorretto:21
+
+WORKDIR /app
+
+COPY target/auth-jar.jar /app/auth.jar
+
+EXPOSE 8080
+
+ENTRYPOINT ["java", "-jar", "/app/application.jar"]
+
+#docker build -t auth-image:latest -f DockerFile.auth .

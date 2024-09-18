@@ -37,8 +37,8 @@ public class ControllerAnnotations {
 
     @Target(ElementType.METHOD)
     @Retention(RetentionPolicy.RUNTIME)
-    @Operation(summary = "create an account", description = "creates a new account")
-    @ApiResponses(value = {@ApiResponse(responseCode = "201", description = "Successful Operation"), @ApiResponse(responseCode = "500", description = "Internal Server Error")})
+    @Operation(summary = "Account Creation", description = "Creates a new account with unique account ID")
+    @ApiResponses(value = {@ApiResponse(responseCode = "201", description = "Successful Creation"), @ApiResponse(responseCode = "500", description = "Internal Server Error")})
     public @interface AddAccountDoc {
     }
 

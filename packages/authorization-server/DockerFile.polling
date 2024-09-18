@@ -1,0 +1,11 @@
+FROM amazoncorretto:21
+
+WORKDIR /app
+
+COPY target/polling-jar.jar /app/polling.jar
+
+EXPOSE 8080
+
+ENTRYPOINT ["java", "-jar", "/app/application.jar"]
+
+#docker build -t polling-image:latest -f DockerFile.polling .

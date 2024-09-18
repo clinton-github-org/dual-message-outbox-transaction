@@ -5,7 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
-import java.math.BigDecimal;
+import java.util.List;
 
 /**
  * @author Clinton Fernandes
@@ -13,6 +13,6 @@ import java.math.BigDecimal;
 @Repository
 public interface AuthorizationRepository extends JpaRepository<Authorization, Long> {
 
-    @Query("SELECT SUM(a.reservedAmount) FROM Authorization a where a.senderAccountId = :senderAccountId")
-    BigDecimal getReservedAmount(Integer senderAccountId);
+    @Query("SELECT o.id from Outbox o WHERE o.status = 'AUTHORIZED'")
+    List<Long> getAuthorizedTransactions();
 }

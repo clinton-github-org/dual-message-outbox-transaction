@@ -6,7 +6,8 @@
   "scripts": {
     "cdk:deploy": "pnpm --prefix infrastructure run deploy",
     "cdk:synth": "pnpm --prefix infrastructure run synth",
-    "cdk:diff": "pnpm --prefix infrastructure run diff"
+    "cdk:diff": "pnpm --prefix infrastructure run diff",
+    "build": "cd packages/authorization-server && mvn clean install -P auth,polling"
   },
   "keywords": [],
   "author": "",
