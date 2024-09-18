@@ -1,4 +1,4 @@
-import { CfnOutput, Duration, Fn, Stack, StackProps } from 'aws-cdk-lib';
+import { CfnOutput, Duration, Fn, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import { Peer, Port, SecurityGroup, SubnetType, Vpc } from 'aws-cdk-lib/aws-ec2';
 import { Cluster, ContainerDefinition, ContainerImage, FargateService, FargateTaskDefinition, LogDriver } from 'aws-cdk-lib/aws-ecs';
 import { ApplicationLoadBalancedFargateService } from 'aws-cdk-lib/aws-ecs-patterns';
@@ -102,6 +102,7 @@ export class InfrastructureStack extends Stack {
     const authLogGroup = new LogGroup(this, 'AuthContainerLogGroup', {
       logGroupName: '/ecs/authorization-server',
       retention: RetentionDays.ONE_DAY,
+      removalPolicy: RemovalPolicy.DESTROY
     });
 
     this.authorizationContainer = this.authTaskDefinition.addContainer('auth-container', {
@@ -167,6 +168,7 @@ export class InfrastructureStack extends Stack {
     const pollingLogGroup = new LogGroup(this, 'PollingContainerLogGroup', {
       logGroupName: '/ecs/polling-server',
       retention: RetentionDays.ONE_DAY,
+      removalPolicy: RemovalPolicy.DESTROY
     });
 
     this.pollingContainer = this.pollingTaskDefinition.addContainer('polling-container', {
