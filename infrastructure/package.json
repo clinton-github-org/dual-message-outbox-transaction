@@ -9,7 +9,7 @@
     "watch": "tsc -w",
     "test": "jest",
     "synth": "cdk synth  && cdk diff",
-    "deploy": "cdk deploy",
+    "deploy": "cdk deploy --require-approval never",
     "destroy": "cdk destroy --all=true"
   },
   "devDependencies": {
