@@ -1,4 +1,4 @@
-import { CfnOutput, Duration, Stack, StackProps } from 'aws-cdk-lib';
+import { CfnOutput, Duration, Fn, Stack, StackProps } from 'aws-cdk-lib';
 import { Peer, Port, SecurityGroup, SubnetType, Vpc } from 'aws-cdk-lib/aws-ec2';
 import { Cluster, ContainerDefinition, ContainerImage, FargateService, FargateTaskDefinition } from 'aws-cdk-lib/aws-ecs';
 import { ApplicationLoadBalancedFargateService } from 'aws-cdk-lib/aws-ecs-patterns';
@@ -75,6 +75,8 @@ export class InfrastructureStack extends Stack {
       }).ref,
     });
 
+    const dbEndpoint = Fn.getAtt(this.rdsCluster.logicalId, 'Endpoint.Address').toString();
+
     // ----------- Authorization: Continuous Service with Load Balancer ------------
 
     this.ecsCluster = new Cluster(this, 'authorization-cluster', {
@@ -104,7 +106,11 @@ export class InfrastructureStack extends Stack {
       environment: {
         'SPRING_PROFILES_ACTIVE': 'auth',
         'NOTIFICATION_TOPIC_ARN': this.snsTopic.topic.topicArn,
-        'SPRING_DATASOURCE_URL': 'jdbc:mysql://' + this.rdsCluster.attrEndpoint + ':3306/authorization',
+        'SPRING_DATASOURCE_URL': Fn.join("", [
+          "jdbc:mysql://",
+          dbEndpoint,
+          ":3306/authorization"
+        ]),
         'SPRING_DATASOURCE_USERNAME': process.env.DB_USERNAME!,
         'SPRING_DATASOURCE_PASSWORD': process.env.DB_PASSWORD!,
         'SPRING_JPA_DATABASE_PLATFORM': 'org.hibernate.dialect.MySQL8Dialect',
