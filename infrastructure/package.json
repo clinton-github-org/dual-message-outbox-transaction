@@ -10,7 +10,7 @@
     "test": "jest",
     "synth": "cdk synth  && cdk diff",
     "deploy": "cdk bootstrap && cdk deploy --require-approval never",
-    "destroy": "cdk destroy --all=true"
+    "destroy": "cdk destroy --all=true --force"
   },
   "devDependencies": {
     "@types/jest": "^29.5.12",
