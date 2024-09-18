@@ -1,6 +1,6 @@
-import { CfnOutput, Duration, Stack, StackProps, aws_ec2 } from 'aws-cdk-lib';
-import { Vpc } from 'aws-cdk-lib/aws-ec2';
-import { Cluster, ContainerDefinition, ContainerImage, FargateService, FargateTaskDefinition, PortMap } from 'aws-cdk-lib/aws-ecs';
+import { CfnOutput, Duration, Stack, StackProps } from 'aws-cdk-lib';
+import { SubnetType, Vpc } from 'aws-cdk-lib/aws-ec2';
+import { Cluster, ContainerDefinition, ContainerImage, FargateService, FargateTaskDefinition } from 'aws-cdk-lib/aws-ecs';
 import { ApplicationLoadBalancedFargateService } from 'aws-cdk-lib/aws-ecs-patterns';
 import { Rule, Schedule } from 'aws-cdk-lib/aws-events';
 import { EcsTask, SnsTopic } from 'aws-cdk-lib/aws-events-targets';
@@ -34,7 +34,7 @@ export class InfrastructureStack extends Stack {
         {
           cidrMask: 24,
           name: 'public-subnet',
-          subnetType: aws_ec2.SubnetType.PUBLIC,
+          subnetType: SubnetType.PUBLIC,
         },
       ],
     });
@@ -132,6 +132,10 @@ export class InfrastructureStack extends Stack {
     this.pollingRule.addTarget(new EcsTask(
       {
         cluster: this.ecsCluster,
+        subnetSelection: {
+          subnetType: SubnetType.PUBLIC,
+        },
+        assignPublicIp: true,
         taskDefinition: this.pollingTaskDefinition,
       }
     ));
