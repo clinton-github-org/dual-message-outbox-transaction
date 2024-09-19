@@ -86,14 +86,14 @@ export class EcsTaskStack extends Stack {
 
         const startPolling = process.env.START_POLLING_TIME || '0 30 23 * * ?';
 
-        const pollingTaskDefinition = new FargateTaskDefinition(this, 'polling-task-definition', {
+        this.pollingTaskDefinition = new FargateTaskDefinition(this, 'polling-task-definition', {
             cpu: 256,
             memoryLimitMiB: 1024,
         });
 
-        pollingTaskDefinition.addToTaskRolePolicy(props.sqsPublishPolicy);
+        this.pollingTaskDefinition.addToTaskRolePolicy(props.sqsPublishPolicy);
 
-        this.pollingContainer = pollingTaskDefinition.addContainer('polling-container', {
+        this.pollingContainer = this.pollingTaskDefinition.addContainer('polling-container', {
             image: ContainerImage.fromAsset(path.join(__dirname, '../../packages/authorization-server'), {
                 file: 'DockerFile.polling',
             }),
@@ -118,7 +118,7 @@ export class EcsTaskStack extends Stack {
         this.pollingService = new ScheduledFargateTask(this, 'polling-service', {
             cluster: this.ecsCluster,
             scheduledFargateTaskDefinitionOptions: {
-                taskDefinition: pollingTaskDefinition,
+                taskDefinition: this.pollingTaskDefinition,
             },
             schedule: Schedule.cron({
                 minute: startPolling.split(' ')[1],
