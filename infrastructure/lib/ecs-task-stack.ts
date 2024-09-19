@@ -32,7 +32,7 @@ export class EcsTaskStack extends Stack {
     constructor(scope: Construct, id: string, props: EcsStackProps) {
         super(scope, id, props);
 
-        this.dbEndpoint = Fn.getAtt(props.rdsCluster.logicalId, 'Endpoint.Address').toString();
+        this.dbEndpoint = props.rdsCluster.attrEndpointAddress;
 
         this.ecsCluster = new Cluster(this, 'ecs-cluster', {
             clusterName: 'ecs-cluster',
