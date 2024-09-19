@@ -117,8 +117,6 @@ export class EcsTaskStack extends Stack {
                 'SPRING_PROFILES_ACTIVE': 'polling',
                 'POLLING_QUEUE_URL': props.pollingQueue.queueUrl,
                 'SENDER_EMAIL': process.env.SENDER_EMAIL!,
-                'CLUSTER_NAME': this.ecsCluster.clusterName,
-                'TASK_ARN': this.pollingTaskDefinition.taskDefinitionArn
             },
         });
 
