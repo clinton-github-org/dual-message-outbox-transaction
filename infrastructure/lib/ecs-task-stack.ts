@@ -32,6 +32,10 @@ export class EcsTaskStack extends Stack {
     constructor(scope: Construct, id: string, props: EcsStackProps) {
         super(scope, id, props);
 
+        if(!process.env.DB_USERNAME || !process.env.DB_PASSWORD) {
+            throw new Error('DB creds not found');
+        }
+
         this.dbEndpoint = props.rdsCluster.attrEndpointAddress;
 
         this.ecsCluster = new Cluster(this, 'ecs-cluster', {
@@ -91,7 +95,10 @@ export class EcsTaskStack extends Stack {
 
         // ----------- Polling: Scheduled Service ------------
 
-        const startPolling = process.env.START_POLLING_TIME || '0 30 23 * * ?';
+        const startPolling = process.env.START_POLLING_TIME;
+        if (!startPolling) {
+            throw new Error("no polling time found");
+        }
         const senderEmail = process.env.SENDER_EMAIL;
         if (!senderEmail) {
             throw new Error("no email found");
@@ -117,7 +124,7 @@ export class EcsTaskStack extends Stack {
             environment: {
                 'SPRING_PROFILES_ACTIVE': 'polling',
                 'POLLING_QUEUE_URL': props.pollingQueue.queueUrl,
-                'SENDER_EMAIL': process.env.SENDER_EMAIL!,
+                'SENDER_EMAIL': senderEmail,
             },
         });
 
