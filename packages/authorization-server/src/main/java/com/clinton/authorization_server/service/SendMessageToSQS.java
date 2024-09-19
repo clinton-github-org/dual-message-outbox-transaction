@@ -35,7 +35,7 @@ public class SendMessageToSQS {
 
     public void sendMessageInBatch(List<Long> authorizedTransactions) {
         List<SendMessageBatchRequestEntry> entries = new ArrayList<>();
-        for (int i = 1; i < authorizedTransactions.size(); i++) {
+        for (int i = 1; i < authorizedTransactions.size()+1; i++) {
             entries.add((SendMessageBatchRequestEntry.builder().id(String.valueOf(i)).messageBody(String.valueOf(authorizedTransactions.get(i))).build()));
             if (i % 10 == 0) {
                 this.sendMessagesBatch(entries);

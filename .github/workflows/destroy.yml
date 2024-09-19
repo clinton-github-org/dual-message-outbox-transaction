@@ -11,9 +11,12 @@ jobs:
     strategy:
       matrix:
         node-version: [20]
-    env: 
+    env:
       CDK_DEFAULT_ACCOUNT: ${{ secrets.CDK_DEFAULT_ACCOUNT }}
       CDK_DEFAULT_REGION: ${{ secrets.CDK_DEFAULT_REGION }}
+      DB_USERNAME: ${{ secrets.DB_USERNAME }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
 
     steps:
       - uses: actions/checkout@v4
