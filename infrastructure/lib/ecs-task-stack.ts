@@ -110,10 +110,7 @@ export class EcsTaskStack extends Stack {
             }),
             logging: LogDriver.awsLogs({
                 streamPrefix: 'polling',
-                logGroup: new LogGroup(this, 'PollingContainerLogGroup', {
-                    logGroupName: '/ecs/polling-server',
-                    retention: RetentionDays.ONE_WEEK,
-                }),
+                logGroup: this.createLogGroup('PollingContainerLogGroup', '/ecs/polling-server')
             }),
             portMappings: [{ containerPort: 8081 }],
             memoryLimitMiB: 512,
