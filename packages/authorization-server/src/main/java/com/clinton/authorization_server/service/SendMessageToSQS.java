@@ -42,6 +42,9 @@ public class SendMessageToSQS {
                 entries = new ArrayList<>();
             }
         }
+        if (!entries.isEmpty()) {
+            this.sendMessagesBatch(entries);
+        }
     }
 
     @Async
