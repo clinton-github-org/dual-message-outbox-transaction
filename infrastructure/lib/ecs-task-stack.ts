@@ -50,10 +50,17 @@ export class EcsTaskStack extends Stack {
             throw new Error("no email found");
         }
 
+        const sesSendEmailPolicy = new PolicyStatement({
+            actions: ['ses:SendEmail', 'ses:SendRawEmail'],
+            resources: ['*'], 
+          });
+
         this.authTaskDefinition = new FargateTaskDefinition(this, 'authorization-task-definition', {
             cpu: 256,
             memoryLimitMiB: 1024
         });
+
+        this.authTaskDefinition.addToTaskRolePolicy(sesSendEmailPolicy);
 
         this.authorizationContainer = this.authTaskDefinition.addContainer('auth-container', {
             image: ContainerImage.fromAsset(path.join(__dirname, '../../packages/authorization-server'), {
