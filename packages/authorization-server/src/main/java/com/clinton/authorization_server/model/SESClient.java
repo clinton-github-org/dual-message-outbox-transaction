@@ -17,7 +17,7 @@ public class SESClient {
         this.sesClient = SesClient.builder().region(Region.AP_SOUTH_1).build();
     }
 
-    public SesClient getSNSClient() {
+    public SesClient getSESClient() {
         return sesClient;
     }
 }

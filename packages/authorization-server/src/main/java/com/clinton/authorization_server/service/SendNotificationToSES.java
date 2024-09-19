@@ -19,15 +19,16 @@ import software.amazon.awssdk.services.ses.model.SendEmailResponse;
 @Profile("auth")
 public class SendNotificationToSES {
 
-    private static final Logger LOG = LoggerFactory.getLogger(SESClient.class);
+    private static final Logger LOG = LoggerFactory.getLogger(SendNotificationToSES.class);
 
     private final SesClient sesClient;
+
     @Value("${SENDER.EMAIL}")
     private String senderEmail;
 
     @Autowired
     public SendNotificationToSES(SESClient _sesClient) {
-        this.sesClient = _sesClient.getSNSClient();
+        this.sesClient = _sesClient.getSESClient();
     }
 
     public void sendNotification(String recipientEmail, String recipientName) {

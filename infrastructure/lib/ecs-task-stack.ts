@@ -92,6 +92,10 @@ export class EcsTaskStack extends Stack {
         // ----------- Polling: Scheduled Service ------------
 
         const startPolling = process.env.START_POLLING_TIME || '0 30 23 * * ?';
+        const senderEmail = process.env.SENDER_EMAIL;
+        if (!senderEmail) {
+            throw new Error("no email found");
+        }
 
         this.pollingTaskDefinition = new FargateTaskDefinition(this, 'polling-task-definition', {
             cpu: 256,
