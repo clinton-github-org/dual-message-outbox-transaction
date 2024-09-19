@@ -127,6 +127,17 @@ export class EcsTaskStack extends Stack {
             environment: {
                 'SPRING_PROFILES_ACTIVE': 'polling',
                 'POLLING_QUEUE_URL': props.pollingQueue.queueUrl,
+                'SPRING_DATASOURCE_URL': Fn.join("", [
+                    "jdbc:mysql://",
+                    this.dbEndpoint!,
+                    ":3306/authorization"
+                ]),
+                'SPRING_DATASOURCE_USERNAME': process.env.DB_USERNAME!,
+                'SPRING_DATASOURCE_PASSWORD': process.env.DB_PASSWORD!,
+                'SPRING_JPA_DATABASE_PLATFORM': 'org.hibernate.dialect.MySQL8Dialect',
+                'SPRING_JPA_HIBERNATE_DDL_AUTO': 'update',
+                'SPRING_JPA_SHOW_SQL': 'false',
+                'SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL': 'true',
             },
         });
 
