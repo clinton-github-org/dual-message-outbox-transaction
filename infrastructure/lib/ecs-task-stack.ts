@@ -2,8 +2,9 @@ import { CfnOutput, Duration, Fn, RemovalPolicy, Stack, StackProps } from 'aws-c
 import { SubnetType, Vpc } from 'aws-cdk-lib/aws-ec2';
 import { Cluster, ContainerDefinition, ContainerImage, FargateTaskDefinition, LogDriver } from 'aws-cdk-lib/aws-ecs';
 import { ApplicationLoadBalancedFargateService, ScheduledFargateTask } from 'aws-cdk-lib/aws-ecs-patterns';
-import { Schedule } from 'aws-cdk-lib/aws-events';
-import { ManagedPolicy, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import { Rule, Schedule } from 'aws-cdk-lib/aws-events';
+import { EcsTask } from 'aws-cdk-lib/aws-events-targets';
+import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { CfnDBCluster } from 'aws-cdk-lib/aws-rds';
 import { Queue } from 'aws-cdk-lib/aws-sqs';
@@ -93,25 +94,12 @@ export class EcsTaskStack extends Stack {
 
         const startPolling = process.env.START_POLLING_TIME || '0 30 23 * * ?';
 
-        // Create an explicit IAM role for polling task
-        const pollingTaskRole = new Role(this, 'PollingTaskRole', {
-            assumedBy: new ServicePrincipal('ecs-tasks.amazonaws.com'),
-        });
-
-        // Attach necessary policies to the role
-        pollingTaskRole.addManagedPolicy(
-            ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonECSTaskExecutionRolePolicy')
-        );
-
-        pollingTaskRole.addToPolicy(props.sqsPublishPolicy);
-
         this.pollingTaskDefinition = new FargateTaskDefinition(this, 'polling-task-definition', {
             cpu: 256,
             memoryLimitMiB: 1024,
-            taskRole: pollingTaskRole, // Use the explicitly created role
         });
 
-        // this.pollingTaskDefinition.addToTaskRolePolicy(props.sqsPublishPolicy);
+        this.pollingTaskDefinition.addToTaskRolePolicy(props.sqsPublishPolicy);
 
         this.pollingContainer = this.pollingTaskDefinition.addContainer('polling-container', {
             image: ContainerImage.fromAsset(path.join(__dirname, '../../packages/authorization-server'), {
@@ -135,11 +123,7 @@ export class EcsTaskStack extends Stack {
             },
         });
 
-        this.pollingService = new ScheduledFargateTask(this, 'polling-service', {
-            cluster: this.ecsCluster,
-            scheduledFargateTaskDefinitionOptions: {
-                taskDefinition: this.pollingTaskDefinition,
-            },
+        const pollingScheduleRule = new Rule(this, 'PollingScheduleRule', {
             schedule: Schedule.cron({
                 minute: startPolling.split(' ')[1],
                 hour: startPolling.split(' ')[2],
@@ -147,11 +131,16 @@ export class EcsTaskStack extends Stack {
                 month: '*',
                 year: '*',
             }),
-            subnetSelection: {
-                subnetType: SubnetType.PUBLIC
-            },
-            taskDefinition: this.pollingTaskDefinition
         });
+
+        pollingScheduleRule.addTarget(new EcsTask({
+            cluster: this.ecsCluster,
+            taskDefinition: this.pollingTaskDefinition,
+            subnetSelection: {
+                subnetType: SubnetType.PUBLIC,
+            },
+            assignPublicIp: true,
+        }));
 
         new CfnOutput(this, 'LoadBalancerUrl', {
             value: `http://${this.authService.loadBalancer.loadBalancerDnsName}`,
