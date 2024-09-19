@@ -45,6 +45,11 @@ export class EcsTaskStack extends Stack {
 
         // ----------- Authorization: Continuous Service with Load Balancer ------------
 
+        const senderEmail = process.env.SENDER_EMAIL;
+        if (!senderEmail) {
+            throw new Error("no email found");
+        }
+
         this.authTaskDefinition = new FargateTaskDefinition(this, 'authorization-task-definition', {
             cpu: 256,
             memoryLimitMiB: 1024
@@ -72,7 +77,8 @@ export class EcsTaskStack extends Stack {
                 'SPRING_JPA_DATABASE_PLATFORM': 'org.hibernate.dialect.MySQL8Dialect',
                 'SPRING_JPA_HIBERNATE_DDL_AUTO': 'update',
                 'SPRING_JPA_SHOW_SQL': 'false',
-                'SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL': 'true'
+                'SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL': 'true',
+                'SENDER_EMAIL': senderEmail,
             }
         });
 
@@ -99,10 +105,6 @@ export class EcsTaskStack extends Stack {
         if (!startPolling) {
             throw new Error("no polling time found");
         }
-        const senderEmail = process.env.SENDER_EMAIL;
-        if (!senderEmail) {
-            throw new Error("no email found");
-        }
 
         this.pollingTaskDefinition = new FargateTaskDefinition(this, 'polling-task-definition', {
             cpu: 256,
@@ -124,7 +126,6 @@ export class EcsTaskStack extends Stack {
             environment: {
                 'SPRING_PROFILES_ACTIVE': 'polling',
                 'POLLING_QUEUE_URL': props.pollingQueue.queueUrl,
-                'SENDER_EMAIL': senderEmail,
             },
         });
 
