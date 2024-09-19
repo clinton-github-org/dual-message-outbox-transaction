@@ -2,8 +2,7 @@ import { CfnOutput, Duration, Fn, RemovalPolicy, Stack, StackProps } from 'aws-c
 import { SubnetType, Vpc } from 'aws-cdk-lib/aws-ec2';
 import { Cluster, ContainerDefinition, ContainerImage, FargateTaskDefinition, LogDriver } from 'aws-cdk-lib/aws-ecs';
 import { ApplicationLoadBalancedFargateService, ScheduledFargateTask } from 'aws-cdk-lib/aws-ecs-patterns';
-import { Rule, Schedule } from 'aws-cdk-lib/aws-events';
-import { EcsTask } from 'aws-cdk-lib/aws-events-targets';
+import { Schedule } from 'aws-cdk-lib/aws-events';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { CfnDBCluster } from 'aws-cdk-lib/aws-rds';
@@ -123,7 +122,11 @@ export class EcsTaskStack extends Stack {
             },
         });
 
-        const pollingScheduleRule = new Rule(this, 'PollingScheduleRule', {
+        this.pollingService = new ScheduledFargateTask(this, 'polling-service', {
+            cluster: this.ecsCluster,
+            scheduledFargateTaskDefinitionOptions: {
+                taskDefinition: this.pollingTaskDefinition,
+            },
             schedule: Schedule.cron({
                 minute: startPolling.split(' ')[1],
                 hour: startPolling.split(' ')[2],
@@ -131,16 +134,10 @@ export class EcsTaskStack extends Stack {
                 month: '*',
                 year: '*',
             }),
-        });
-
-        pollingScheduleRule.addTarget(new EcsTask({
-            cluster: this.ecsCluster,
-            taskDefinition: this.pollingTaskDefinition,
             subnetSelection: {
-                subnetType: SubnetType.PUBLIC,
-            },
-            assignPublicIp: true,
-        }));
+                subnetType: SubnetType.PUBLIC
+            }
+        });
 
         new CfnOutput(this, 'LoadBalancerUrl', {
             value: `http://${this.authService.loadBalancer.loadBalancerDnsName}`,
