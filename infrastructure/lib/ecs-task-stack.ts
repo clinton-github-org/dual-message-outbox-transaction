@@ -1,5 +1,5 @@
 import { CfnOutput, Duration, Fn, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
-import { Vpc } from 'aws-cdk-lib/aws-ec2';
+import { SubnetType, Vpc } from 'aws-cdk-lib/aws-ec2';
 import { Cluster, ContainerDefinition, ContainerImage, FargateTaskDefinition, LogDriver } from 'aws-cdk-lib/aws-ecs';
 import { ApplicationLoadBalancedFargateService, ScheduledFargateTask } from 'aws-cdk-lib/aws-ecs-patterns';
 import { Schedule } from 'aws-cdk-lib/aws-events';
@@ -73,7 +73,10 @@ export class EcsTaskStack extends Stack {
             taskDefinition: this.authTaskDefinition,
             publicLoadBalancer: true,
             desiredCount: 1,
-            assignPublicIp: true
+            assignPublicIp: true,
+            taskSubnets: {
+                subnetType: SubnetType.PUBLIC
+            }
         });
 
         this.authService.targetGroup.configureHealthCheck({
@@ -127,6 +130,9 @@ export class EcsTaskStack extends Stack {
                 month: '*',
                 year: '*',
             }),
+            subnetSelection: {
+                subnetType: SubnetType.PUBLIC
+            }
         });
 
         new CfnOutput(this, 'LoadBalancerUrl', {
