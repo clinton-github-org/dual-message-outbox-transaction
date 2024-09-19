@@ -1,7 +1,6 @@
 package com.clinton.authorization_server.service;
 
 import com.clinton.authorization_server.repository.AuthorizationRepository;
-import com.clinton.authorization_server.repository.OutboxRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,7 +38,7 @@ public class PollingService {
     private String taskArn;
 
     @Autowired
-    public PollingService(AuthorizationRepository _authorizationRepository, OutboxRepository _outboxRepository, SendMessageToSQS _sendMessageToSQS) {
+    public PollingService(AuthorizationRepository _authorizationRepository, SendMessageToSQS _sendMessageToSQS) {
         this.authorizationRepository = _authorizationRepository;
         this.sendMessageToSQS = _sendMessageToSQS;
     }
@@ -50,7 +49,7 @@ public class PollingService {
         try {
             List<Long> authorizedTransactions = this.getAllAuthorizedTransactionsFromDB();
             LOG.info("Found entries " + authorizedTransactions.size());
-            if (authorizedTransactions.size() > 0) {
+            if (!authorizedTransactions.isEmpty()) {
                 sendMessageToSQS.sendMessageInBatch(authorizedTransactions);
             } else {
                 stopEcsTask();
