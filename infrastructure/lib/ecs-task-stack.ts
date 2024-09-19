@@ -1,8 +1,7 @@
 import { CfnOutput, Duration, Fn, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import { SubnetType, Vpc } from 'aws-cdk-lib/aws-ec2';
-import { Cluster, ContainerDefinition, ContainerImage, FargateTaskDefinition, LogDriver } from 'aws-cdk-lib/aws-ecs';
-import { ApplicationLoadBalancedFargateService, ScheduledFargateTask } from 'aws-cdk-lib/aws-ecs-patterns';
-import { Schedule } from 'aws-cdk-lib/aws-events';
+import { Cluster, ContainerDefinition, ContainerImage, FargateService, FargateTaskDefinition, LogDriver } from 'aws-cdk-lib/aws-ecs';
+import { ApplicationLoadBalancedFargateService } from 'aws-cdk-lib/aws-ecs-patterns';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { CfnDBCluster } from 'aws-cdk-lib/aws-rds';
@@ -27,12 +26,12 @@ export class EcsTaskStack extends Stack {
 
     public readonly pollingTaskDefinition: FargateTaskDefinition;
     public readonly pollingContainer: ContainerDefinition;
-    public readonly pollingService: ScheduledFargateTask;
+    public readonly pollingService: FargateService;
 
     constructor(scope: Construct, id: string, props: EcsStackProps) {
         super(scope, id, props);
 
-        if(!process.env.DB_USERNAME || !process.env.DB_PASSWORD) {
+        if (!process.env.DB_USERNAME || !process.env.DB_PASSWORD) {
             throw new Error('DB creds not found');
         }
 
@@ -52,8 +51,8 @@ export class EcsTaskStack extends Stack {
 
         const sesSendEmailPolicy = new PolicyStatement({
             actions: ['ses:SendEmail', 'ses:SendRawEmail'],
-            resources: ['*'], 
-          });
+            resources: ['*'],
+        });
 
         this.authTaskDefinition = new FargateTaskDefinition(this, 'authorization-task-definition', {
             cpu: 256,
@@ -108,11 +107,6 @@ export class EcsTaskStack extends Stack {
 
         // ----------- Polling: Scheduled Service ------------
 
-        const startPolling = process.env.START_POLLING_TIME;
-        if (!startPolling) {
-            throw new Error("no polling time found");
-        }
-
         this.pollingTaskDefinition = new FargateTaskDefinition(this, 'polling-task-definition', {
             cpu: 256,
             memoryLimitMiB: 1024,
@@ -136,21 +130,11 @@ export class EcsTaskStack extends Stack {
             },
         });
 
-        this.pollingService = new ScheduledFargateTask(this, 'polling-service', {
+        this.pollingService = new FargateService(this, 'polling-service', {
             cluster: this.ecsCluster,
-            scheduledFargateTaskDefinitionOptions: {
-                taskDefinition: this.pollingTaskDefinition,
-            },
-            schedule: Schedule.cron({
-                minute: startPolling.split(' ')[1],
-                hour: startPolling.split(' ')[2],
-                day: '*',
-                month: '*',
-                year: '*',
-            }),
-            subnetSelection: {
-                subnetType: SubnetType.PUBLIC
-            }
+            taskDefinition: this.pollingTaskDefinition,
+            assignPublicIp: true,
+            desiredCount: 1,
         });
 
         new CfnOutput(this, 'LoadBalancerUrl', {

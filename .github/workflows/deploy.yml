@@ -21,7 +21,6 @@ jobs:
       CDK_DEFAULT_REGION: ${{ secrets.CDK_DEFAULT_REGION }}
       DB_USERNAME: ${{ secrets.DB_USERNAME }}
       DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-      START_POLLING_TIME: ${{ secrets.START_POLLING_TIME }}
       SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
 
     outputs:

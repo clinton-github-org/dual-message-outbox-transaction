@@ -33,7 +33,7 @@ public class PollingService {
         this.sendMessageToSQS = _sendMessageToSQS;
     }
 
-    @Scheduled(cron = "0 */5 * * * ?")
+    @Scheduled(cron = "0 */15 * * * ?")
     public void pollOutboxAndSendToSqs() {
         LOG.info("Starting polling execution...");
         try {
@@ -41,8 +41,6 @@ public class PollingService {
             LOG.info("Found entries " + authorizedTransactions.size());
             if (!authorizedTransactions.isEmpty()) {
                 sendMessageToSQS.sendMessageInBatch(authorizedTransactions);
-            } else {
-                System.exit(0);
             }
         } catch (Exception exception) {
             LOG.error("Polling failed! ", exception.getMessage(), exception);
