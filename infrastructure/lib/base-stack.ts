@@ -1,4 +1,4 @@
-import { Duration, Fn, Stack, StackProps } from 'aws-cdk-lib';
+import { Duration, Stack, StackProps } from 'aws-cdk-lib';
 import { Peer, Port, SecurityGroup, SubnetType, Vpc } from 'aws-cdk-lib/aws-ec2';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { CfnDBCluster, CfnDBSubnetGroup } from 'aws-cdk-lib/aws-rds';
@@ -11,7 +11,6 @@ export class BaseStack extends Stack {
   public readonly rdsCluster: CfnDBCluster;
   public readonly pollingQueue: Queue;
   public readonly sqsPublishPolicy: PolicyStatement;
-  public dbEndpoint: string;
 
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
@@ -55,8 +54,6 @@ export class BaseStack extends Stack {
         subnetIds: this.vpc.selectSubnets({ subnetType: SubnetType.PUBLIC }).subnetIds,
       }).ref,
     });
-
-    this.dbEndpoint = Fn.getAtt(this.rdsCluster.logicalId, 'Endpoint.Address').toString();
 
     this.sqsPublishPolicy = new PolicyStatement({
       effect: Effect.ALLOW,

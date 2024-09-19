@@ -5,6 +5,7 @@ import { ApplicationLoadBalancedFargateService, ScheduledFargateTask } from 'aws
 import { Schedule } from 'aws-cdk-lib/aws-events';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
+import { CfnDBCluster } from 'aws-cdk-lib/aws-rds';
 import { Queue } from 'aws-cdk-lib/aws-sqs';
 import { Construct } from 'constructs';
 import path = require('path');
@@ -13,11 +14,12 @@ interface EcsStackProps extends StackProps {
     vpc: Vpc;
     pollingQueue: Queue;
     sqsPublishPolicy: PolicyStatement;
-    dbEndpoint: string;
+    rdsCluster: CfnDBCluster;
 }
 
 export class EcsTaskStack extends Stack {
     public readonly ecsCluster: Cluster;
+    public readonly dbEndpoint: string;
 
     public readonly authTaskDefinition: FargateTaskDefinition;
     public readonly authorizationContainer: ContainerDefinition;
@@ -29,6 +31,8 @@ export class EcsTaskStack extends Stack {
 
     constructor(scope: Construct, id: string, props: EcsStackProps) {
         super(scope, id, props);
+
+        this.dbEndpoint = Fn.getAtt(props.rdsCluster.logicalId, 'Endpoint.Address').toString();
 
         this.ecsCluster = new Cluster(this, 'ecs-cluster', {
             clusterName: 'ecs-cluster',
@@ -56,7 +60,7 @@ export class EcsTaskStack extends Stack {
                 'SPRING_PROFILES_ACTIVE': 'auth',
                 'SPRING_DATASOURCE_URL': Fn.join("", [
                     "jdbc:mysql://",
-                    props.dbEndpoint,
+                    this.dbEndpoint!,
                     ":3306/authorization"
                 ]),
                 'SPRING_DATASOURCE_USERNAME': process.env.DB_USERNAME!,

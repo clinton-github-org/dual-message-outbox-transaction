@@ -12,5 +12,5 @@ const ecsTaskStack = new EcsTaskStack(app, 'EcsTaskStack', {
     vpc: baseStack.vpc,
     pollingQueue: baseStack.pollingQueue,
     sqsPublishPolicy: baseStack.sqsPublishPolicy,
-    dbEndpoint: baseStack.dbEndpoint,
+    rdsCluster: baseStack.rdsCluster
 });
