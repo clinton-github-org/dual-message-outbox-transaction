@@ -3,7 +3,7 @@ import { SubnetType, Vpc } from 'aws-cdk-lib/aws-ec2';
 import { Cluster, ContainerDefinition, ContainerImage, FargateTaskDefinition, LogDriver } from 'aws-cdk-lib/aws-ecs';
 import { ApplicationLoadBalancedFargateService, ScheduledFargateTask } from 'aws-cdk-lib/aws-ecs-patterns';
 import { Schedule } from 'aws-cdk-lib/aws-events';
-import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import { ManagedPolicy, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { CfnDBCluster } from 'aws-cdk-lib/aws-rds';
 import { Queue } from 'aws-cdk-lib/aws-sqs';
@@ -93,9 +93,15 @@ export class EcsTaskStack extends Stack {
 
         const startPolling = process.env.START_POLLING_TIME || '0 30 23 * * ?';
 
+        const pollingTaskRole = new Role(this, 'PollingTaskRole', {
+            assumedBy: new ServicePrincipal('ecs-tasks.amazonaws.com'),
+        });
+        pollingTaskRole.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonECSTaskExecutionRolePolicy'));
+
         this.pollingTaskDefinition = new FargateTaskDefinition(this, 'polling-task-definition', {
             cpu: 256,
             memoryLimitMiB: 1024,
+            taskRole: pollingTaskRole,
         });
 
         this.pollingTaskDefinition.addToTaskRolePolicy(props.sqsPublishPolicy);
