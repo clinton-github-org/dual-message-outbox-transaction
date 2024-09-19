@@ -8,8 +8,8 @@
     "build": "tsc",
     "watch": "tsc -w",
     "test": "jest",
-    "synth": "cdk synth  && cdk diff",
-    "deploy": "cdk bootstrap && cdk deploy --require-approval never",
+    "synth": "cdk synth && cdk diff",
+    "deploy": "cdk bootstrap && cdk deploy --all --require-approval never",
     "destroy": "cdk destroy --all=true --force"
   },
   "devDependencies": {
