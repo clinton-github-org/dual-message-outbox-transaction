@@ -93,18 +93,25 @@ export class EcsTaskStack extends Stack {
 
         const startPolling = process.env.START_POLLING_TIME || '0 30 23 * * ?';
 
+        // Create an explicit IAM role for polling task
         const pollingTaskRole = new Role(this, 'PollingTaskRole', {
             assumedBy: new ServicePrincipal('ecs-tasks.amazonaws.com'),
         });
-        pollingTaskRole.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonECSTaskExecutionRolePolicy'));
+
+        // Attach necessary policies to the role
+        pollingTaskRole.addManagedPolicy(
+            ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonECSTaskExecutionRolePolicy')
+        );
+
+        pollingTaskRole.addToPolicy(props.sqsPublishPolicy);
 
         this.pollingTaskDefinition = new FargateTaskDefinition(this, 'polling-task-definition', {
             cpu: 256,
             memoryLimitMiB: 1024,
-            taskRole: pollingTaskRole,
+            taskRole: pollingTaskRole, // Use the explicitly created role
         });
 
-        this.pollingTaskDefinition.addToTaskRolePolicy(props.sqsPublishPolicy);
+        // this.pollingTaskDefinition.addToTaskRolePolicy(props.sqsPublishPolicy);
 
         this.pollingContainer = this.pollingTaskDefinition.addContainer('polling-container', {
             image: ContainerImage.fromAsset(path.join(__dirname, '../../packages/authorization-server'), {
@@ -142,7 +149,8 @@ export class EcsTaskStack extends Stack {
             }),
             subnetSelection: {
                 subnetType: SubnetType.PUBLIC
-            }
+            },
+            taskDefinition: this.pollingTaskDefinition
         });
 
         new CfnOutput(this, 'LoadBalancerUrl', {
