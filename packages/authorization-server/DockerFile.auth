@@ -6,6 +6,6 @@ COPY target/auth.jar /app/auth.jar
 
 EXPOSE 8080
 
-ENTRYPOINT ["java", "-jar", "/app/application.jar"]
+ENTRYPOINT ["java", "-jar", "/app/auth.jar"]
 
 #docker build -t auth-image:latest -f DockerFile.auth .

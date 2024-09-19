@@ -4,8 +4,8 @@ WORKDIR /app
 
 COPY target/polling.jar /app/polling.jar
 
-EXPOSE 8080
+EXPOSE 8081
 
-ENTRYPOINT ["java", "-jar", "/app/application.jar"]
+ENTRYPOINT ["java", "-jar", "/app/polling.jar"]
 
 #docker build -t polling-image:latest -f DockerFile.polling .

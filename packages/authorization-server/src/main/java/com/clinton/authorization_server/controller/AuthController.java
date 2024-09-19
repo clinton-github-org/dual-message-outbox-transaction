@@ -5,10 +5,8 @@ import com.clinton.authorization_server.annotations.ControllerAnnotations;
 import com.clinton.authorization_server.model.Authorization;
 import com.clinton.authorization_server.service.AccountService;
 import com.clinton.authorization_server.service.AuthService;
-import com.clinton.authorization_server.service.SendNotificationToSNS;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -28,20 +26,12 @@ public class AuthController {
 
     private final AuthService authService;
     private final AccountService accountService;
-    private final SendNotificationToSNS sendNotificationToSNS;
-
-    @Value("${NOTIFICATION.MESSAGE}")
-    private String message;
-
-    @Value("${NOTIFICATION.SUBJECT}")
-    private String subject;
 
 
     @Autowired
-    public AuthController(AuthService _authService, AccountService _accountService, SendNotificationToSNS _sendNotificationToSNS) {
+    public AuthController(AuthService _authService, AccountService _accountService) {
         this.authService = _authService;
         this.accountService = _accountService;
-        this.sendNotificationToSNS = _sendNotificationToSNS;
     }
 
     @PostMapping(path = "/", produces = "application/json")

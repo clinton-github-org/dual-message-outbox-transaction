@@ -1,7 +1,6 @@
 package com.clinton.authorization_server.service;
 
 import com.clinton.authorization_server.repository.AuthorizationRepository;
-import com.clinton.authorization_server.repository.OutboxRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,21 +24,24 @@ public class PollingService {
     private static final Logger LOG = LoggerFactory.getLogger(PollingService.class);
 
     private final AuthorizationRepository authorizationRepository;
+
     private final SendMessageToSQS sendMessageToSQS;
 
     @Autowired
-    public PollingService(AuthorizationRepository _authorizationRepository, OutboxRepository _outboxRepository, SendMessageToSQS _sendMessageToSQS) {
+    public PollingService(AuthorizationRepository _authorizationRepository, SendMessageToSQS _sendMessageToSQS) {
         this.authorizationRepository = _authorizationRepository;
         this.sendMessageToSQS = _sendMessageToSQS;
     }
 
-    @Scheduled(cron = "0 */5 * * * ?")
+    @Scheduled(cron = "0 */15 * * * ?")
     public void pollOutboxAndSendToSqs() {
         LOG.info("Starting polling execution...");
         try {
             List<Long> authorizedTransactions = this.getAllAuthorizedTransactionsFromDB();
             LOG.info("Found entries " + authorizedTransactions.size());
-            sendMessageToSQS.sendMessageInBatch(authorizedTransactions);
+            if (!authorizedTransactions.isEmpty()) {
+                sendMessageToSQS.sendMessageInBatch(authorizedTransactions);
+            }
         } catch (Exception exception) {
             LOG.error("Polling failed! ", exception.getMessage(), exception);
             throw new RuntimeException();

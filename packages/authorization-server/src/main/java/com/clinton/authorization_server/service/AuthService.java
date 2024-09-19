@@ -30,13 +30,13 @@ public class AuthService {
     private final AccountRepository accountRepository;
     private final AuthorizationRepository authorizationRepository;
 
-//    @Autowired
-//    private SendNotificationToSNS sendNotificationToSNS;
+    private final SendNotificationToSES sendNotificationToSES;
 
     @Autowired
-    public AuthService(AccountRepository _accountRepository, AuthorizationRepository _authorizationRepository) {
+    public AuthService(AccountRepository _accountRepository, AuthorizationRepository _authorizationRepository, SendNotificationToSES _sendNotificationToSES) {
         this.accountRepository = _accountRepository;
         this.authorizationRepository = _authorizationRepository;
+        this.sendNotificationToSES = _sendNotificationToSES;
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_UNCOMMITTED, timeout = 180, rollbackFor = {DataAccessException.class, SQLException.class, TransactionException.class}, noRollbackFor = {BalanceNotSufficientException.class})
@@ -53,7 +53,7 @@ public class AuthService {
                 authorization.setOutbox(outbox);
                 accountRepository.save(account);
                 authorizationRepository.save(authorization);
-//            sendNotificationToSNS.sendNotification("Your payment is authorized!", "Payment successful", account.getPhoneNumber());
+                sendNotificationToSES.sendNotification(receiverAccount.get().getPhoneNumber(), account.getAccountName());
             } else {
                 outbox = new Outbox(Status.DECLINED, authorization);
                 authorization.setOutbox(outbox);
