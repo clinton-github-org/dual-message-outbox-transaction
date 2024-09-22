@@ -2,10 +2,10 @@ import { Duration, Stack, StackProps } from 'aws-cdk-lib';
 import { AttributeType, BillingMode, Table } from 'aws-cdk-lib/aws-dynamodb';
 import { Peer, Port, SecurityGroup, SubnetType, Vpc } from 'aws-cdk-lib/aws-ec2';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
-import { Code, Function, Runtime, Tracing } from 'aws-cdk-lib/aws-lambda';
+import { Code, Function, LayerVersion, Runtime, Tracing } from 'aws-cdk-lib/aws-lambda';
 import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 import { CfnDBCluster, CfnDBSubnetGroup } from 'aws-cdk-lib/aws-rds';
-import { DeadLetterQueue, Queue } from 'aws-cdk-lib/aws-sqs';
+import { Queue } from 'aws-cdk-lib/aws-sqs';
 import { Construct } from 'constructs';
 import path = require('path');
 
@@ -86,17 +86,26 @@ export class BaseStack extends Stack {
       billingMode: BillingMode.PAY_PER_REQUEST,
     });
 
+    const powertoolsLayer = LayerVersion.fromLayerVersionArn(
+      this,
+      'PowertoolsLayer',
+      `arn:aws:lambda:ap-south-1:094274105915:layer:AWSLambdaPowertoolsTypeScriptV2:13`
+    );
+
     this.clearanceServer = new Function(this, 'clearance-server', {
       functionName: 'clearance-server',
       code: Code.fromAsset(path.join(__dirname, '../../packages/clearance-server/dist')),
       runtime: Runtime.NODEJS_20_X,
       handler: 'index.idempotentHandler',
-      tracing: Tracing.ACTIVE
+      tracing: Tracing.ACTIVE,
+      layers: [powertoolsLayer]
     });
 
     this.idempotencyTable.grantReadWriteData(this.clearanceServer);
 
-    const sqsEventSource = new SqsEventSource(this.pollingQueue);
+    const sqsEventSource = new SqsEventSource(this.pollingQueue, {
+      batchSize: 1
+    });
 
     this.clearanceServer.addEventSource(sqsEventSource);
 

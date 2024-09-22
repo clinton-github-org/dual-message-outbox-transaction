@@ -1,4 +1,4 @@
-import { SES } from 'aws-sdk';
+import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
 import { FieldPacket, PoolConnection, RowDataPacket } from 'mysql2/promise';
 import { Account, AuthRecord, Email, creditAccountSQL, debitAccountSQL, getAccountSQL, getTransactionSQL, logger, tracer } from './config';
 
@@ -73,7 +73,7 @@ export class PaymentService {
     }
 
     @tracer.captureMethod()
-    public async sendEmail(ses: SES, receiverEmail: string, senderEmail: string, senderName: string, accountBalance: string) {
+    public async sendEmail(ses: SESClient, receiverEmail: string, senderEmail: string, senderName: string, accountBalance: string) {
         const params: Email = {
             Source: senderEmail,
             Destination: {
@@ -91,7 +91,7 @@ export class PaymentService {
             }
         }
 
-        const data = await ses.sendEmail(params).promise();
+        const data = await ses.send(new SendEmailCommand(params));
         logger.info('Email sent!: ' + data.MessageId);
     }
 }

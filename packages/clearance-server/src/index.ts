@@ -1,7 +1,7 @@
 import { makeIdempotent } from '@aws-lambda-powertools/idempotency';
 import { Handler, SQSEvent } from 'aws-lambda';
-import * as AWS from 'aws-sdk';
 import type { Subsegment } from 'aws-xray-sdk-core';
+import { SESClient } from "@aws-sdk/client-ses";
 import { Pool, PoolConnection, createPool } from 'mysql2/promise';
 import { AuthRecord, dbConfig, idempotencyConfig, logger, persistenceStore, tracer } from './config';
 import { PaymentService } from './service';
@@ -25,11 +25,9 @@ tracer.captureLambdaHandler({
 });
 
 const paymentService: PaymentService = new PaymentService();
-
-AWS.config.update({
-    region: 'ap-south-1',
+const ses = new SESClient({
+    region: 'ap-south-1'
 });
-const ses = new AWS.SES();
 
 export const handler: Handler = async (event: SQSEvent) => {
     logger.info('Received event', { event });
@@ -46,47 +44,43 @@ export const handler: Handler = async (event: SQSEvent) => {
         logger.error('failed to get segment');
         return { statusCode: 500, body: `Error: Internal Server Error` };
     }
+    const record = event.Records[0];
 
-    logger.info(`Starting batch processing of ${event.Records}`)
-    await Promise.all(event.Records.map(async (record) => {
-        try {
-            const outboxId = record.body;
-            logger.info(`Starting processing of ${record.messageId}`)
+    try {
+        const outboxId = record.body;
+        logger.info(`Starting processing of ${record.messageId}`)
 
-            dbConnection = await dbPool.getConnection();
+        dbConnection = await dbPool.getConnection();
 
-            const authRecord: AuthRecord = await paymentService.getAuthRecord(dbConnection, outboxId);
+        const authRecord: AuthRecord = await paymentService.getAuthRecord(dbConnection, outboxId);
 
-            const [receiverEmail, senderEmail, senderName, accountBalance]: string[] = await paymentService.clearPayment(dbConnection, authRecord);
+        const [receiverEmail, senderEmail, senderName, accountBalance]: string[] = await paymentService.clearPayment(dbConnection, authRecord);
 
-            await paymentService.sendEmail(ses, receiverEmail, senderEmail, senderName, accountBalance);
+        await paymentService.sendEmail(ses, receiverEmail, senderEmail, senderName, accountBalance);
 
-            logger.info(`Completed processing of ${record.messageId}`)
-        } catch (error: unknown) {
-            logger.error('Error occurred', { error });
+        logger.info(`Completed processing of ${record.messageId}`)
+    } catch (error: unknown) {
+        logger.error('Error occurred', { error });
 
-            if (dbConnection) {
-                await dbConnection.rollback();
-                logger.warn('Transaction rolled back due to error');
-            }
-
-            logger.error(`Error occurred for: ${record.body}`);
-            return {
-                itemIdentifier: record.messageId
-            };
-        } finally {
-            if (dbConnection) {
-                dbConnection.release();
-            }
-
-            if (segment && handlerSubsegment) {
-                handlerSubsegment.close();
-                tracer.setSegment(segment);
-            }
+        if (dbConnection) {
+            await dbConnection.rollback();
+            logger.warn('Transaction rolled back due to error');
         }
-    }));
-    logger.info(`Completed batch processing of ${event.Records}`)
-    return null;
+
+        logger.error(`Error occurred for: ${record.body}`);
+        return {
+            itemIdentifier: record.messageId
+        };
+    } finally {
+        if (dbConnection) {
+            dbConnection.release();
+        }
+
+        if (segment && handlerSubsegment) {
+            handlerSubsegment.close();
+            tracer.setSegment(segment);
+        }
+    }
 };
 
 export const idempotentHandler = makeIdempotent(handler, {
