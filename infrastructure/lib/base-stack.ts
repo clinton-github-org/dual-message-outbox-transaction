@@ -85,6 +85,7 @@ export class BaseStack extends Stack {
       },
       timeToLiveAttribute: 'expiration',
       billingMode: BillingMode.PAY_PER_REQUEST,
+      removalPolicy:RemovalPolicy.DESTROY,
     });
 
     const powertoolsLayer = LayerVersion.fromLayerVersionArn(
@@ -107,7 +108,7 @@ export class BaseStack extends Stack {
       functionName: 'clearance-server',
       code: Code.fromAsset(path.join(__dirname, '../../packages/clearance-server/dist')),
       runtime: Runtime.NODEJS_20_X,
-      handler: 'index.handler',
+      handler: 'index.idempotentHandler',
       tracing: Tracing.ACTIVE,
       layers: [powertoolsLayer],
       environment: {

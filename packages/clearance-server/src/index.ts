@@ -56,11 +56,15 @@ export const handler: Handler = async (event: SQSEvent, context: Context) => {
 
         dbConnection = await dbPool.getConnection();
 
+        await dbConnection.beginTransaction();
+
         const authRecord: AuthRecord = await paymentService.getAuthRecord(dbConnection, outboxId);
 
         const [receiverEmail, senderEmail, senderName, accountBalance]: string[] = await paymentService.clearPayment(dbConnection, authRecord);
 
         await paymentService.sendEmail(ses, receiverEmail, senderEmail, senderName, accountBalance);
+
+        await dbConnection.commit();
 
         logger.info(`Completed processing of ${record.messageId}`)
         return { statusCode: 200, body: `Successfully processed message: ${record.messageId}` };

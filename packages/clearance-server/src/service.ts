@@ -6,7 +6,6 @@ export class PaymentService {
 
     @tracer.captureMethod()
     public async getAuthRecord(dbConnection: PoolConnection, outboxId: string): Promise<AuthRecord> {
-        await dbConnection.beginTransaction();
         logger.info('Fetching transaction');
 
         const [rows, fields]: [RowDataPacket[], FieldPacket[]] = await dbConnection.execute(
