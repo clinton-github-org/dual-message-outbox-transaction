@@ -53,7 +53,7 @@ public class AuthService {
                 authorization.setOutbox(outbox);
                 accountRepository.save(account);
                 authorizationRepository.save(authorization);
-                sendNotificationToSES.sendNotification(account.get().getPhoneNumber(), account.getAccountName());
+                sendNotificationToSES.sendNotification(account.getPhoneNumber(), account.getAccountName());
             } else {
                 outbox = new Outbox(Status.DECLINED, authorization);
                 authorization.setOutbox(outbox);
