@@ -22,7 +22,7 @@ const idempotentGetAuthRecord = makeIdempotent(async (dbConnection: PoolConnecti
 }, {
     persistenceStore,
     config: idempotencyConfig,
-    dataIndexArgument: 2
+    dataIndexArgument: 1
 });
 
 export const handler: Handler = async (event: SQSEvent, context: Context) => {
