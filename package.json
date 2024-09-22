@@ -8,7 +8,9 @@
     "cdk:deploy": "pnpm --prefix infrastructure run deploy",
     "cdk:synth": "pnpm --prefix infrastructure run synth",
     "cdk:destroy": "pnpm --prefix infrastructure run destroy",
-    "build": "cd packages/authorization-server && mvn clean package -P auth && mvn package -P polling"
+    "build:auth": "cd packages/authorization-server && mvn clean package -P auth && mvn package -P polling",
+    "prebuild:clearance": "pnpm --prefix packages/clearance-server run clean",
+    "build:clearance": "pnpm --prefix packages/clearance-server run build"
   },
   "keywords": [],
   "author": "",
