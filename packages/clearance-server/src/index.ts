@@ -27,6 +27,7 @@ const idempotentGetAuthRecord = makeIdempotent(async (dbConnection: PoolConnecti
 
 export const handler: Handler = async (event: SQSEvent, context: Context) => {
     logger.addContext(context);
+    idempotencyConfig.registerLambdaContext(context);
     logger.info('Received event', { event });
 
     const getPool = (): Pool => {
@@ -62,7 +63,6 @@ export const handler: Handler = async (event: SQSEvent, context: Context) => {
 
         const dbPool: Pool = getPool();
         dbConnection = await dbPool.getConnection();
-        logger.info('Successfully fetched DB connection');
         await dbConnection.beginTransaction();
 
         const authRecord: AuthRecord = await idempotentGetAuthRecord(dbConnection, outboxId);

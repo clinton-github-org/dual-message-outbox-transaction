@@ -96,8 +96,7 @@ export class PaymentService {
             }
         }
 
-        const data = await sesClient.send(new SendEmailCommand(params), {
-        });
+        const data = await sesClient.send(new SendEmailCommand(params));
         logger.info('Email sent!: ' + data.MessageId);
     }
 }
