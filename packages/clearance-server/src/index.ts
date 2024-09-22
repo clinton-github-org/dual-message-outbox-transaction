@@ -1,7 +1,7 @@
 import { makeIdempotent } from '@aws-lambda-powertools/idempotency';
-import { Handler, SQSEvent } from 'aws-lambda';
-import type { Subsegment } from 'aws-xray-sdk-core';
 import { SESClient } from "@aws-sdk/client-ses";
+import { Context, Handler, SQSEvent } from 'aws-lambda';
+import type { Subsegment } from 'aws-xray-sdk-core';
 import { Pool, PoolConnection, createPool } from 'mysql2/promise';
 import { AuthRecord, dbConfig, idempotencyConfig, logger, persistenceStore, tracer } from './config';
 import { PaymentService } from './service';
@@ -29,7 +29,8 @@ const ses = new SESClient({
     region: 'ap-south-1'
 });
 
-export const handler: Handler = async (event: SQSEvent) => {
+export const handler: Handler = async (event: SQSEvent, context: Context) => {
+    logger.addContext(context);
     logger.info('Received event', { event });
 
     const dbPool: Pool = getPool();
@@ -59,6 +60,7 @@ export const handler: Handler = async (event: SQSEvent) => {
         await paymentService.sendEmail(ses, receiverEmail, senderEmail, senderName, accountBalance);
 
         logger.info(`Completed processing of ${record.messageId}`)
+        return { statusCode: 200, body: `Successfully processed message: ${record.messageId}` };
     } catch (error: unknown) {
         logger.error('Error occurred', { error });
 
@@ -69,7 +71,8 @@ export const handler: Handler = async (event: SQSEvent) => {
 
         logger.error(`Error occurred for: ${record.body}`);
         return {
-            itemIdentifier: record.messageId
+            statusCode: 500,
+            body: `Error processing message ${record.messageId}: ${error instanceof Error ? error.message : error}`
         };
     } finally {
         if (dbConnection) {

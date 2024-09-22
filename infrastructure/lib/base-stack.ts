@@ -1,9 +1,10 @@
-import { Duration, Stack, StackProps } from 'aws-cdk-lib';
+import { Duration, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import { AttributeType, BillingMode, Table } from 'aws-cdk-lib/aws-dynamodb';
 import { Peer, Port, SecurityGroup, SubnetType, Vpc } from 'aws-cdk-lib/aws-ec2';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Code, Function, LayerVersion, Runtime, Tracing } from 'aws-cdk-lib/aws-lambda';
 import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
+import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { CfnDBCluster, CfnDBSubnetGroup } from 'aws-cdk-lib/aws-rds';
 import { Queue } from 'aws-cdk-lib/aws-sqs';
 import { Construct } from 'constructs';
@@ -96,6 +97,12 @@ export class BaseStack extends Stack {
       throw new Error('DB creds not found');
     }
 
+    const clearanceLogGroup = new LogGroup(this, id, {
+      logGroupName: 'clearance-server',
+      retention: RetentionDays.ONE_DAY,
+      removalPolicy: RemovalPolicy.DESTROY,
+    });
+
     this.clearanceServer = new Function(this, 'clearance-server', {
       functionName: 'clearance-server',
       code: Code.fromAsset(path.join(__dirname, '../../packages/clearance-server/dist')),
@@ -104,11 +111,13 @@ export class BaseStack extends Stack {
       tracing: Tracing.ACTIVE,
       layers: [powertoolsLayer],
       environment: {
+        NODE_OPTIONS: '--enable-source-maps',
         DB_HOST: this.rdsCluster.attrEndpointAddress,
         DB_USERNAME: process.env.DB_USERNAME!,
         DB_PASSWORD: process.env.DB_PASSWORD!,
         DB_NAME: 'authorization'
-      }
+      },
+      logGroup: clearanceLogGroup,
     });
 
     this.idempotencyTable.grantReadWriteData(this.clearanceServer);
