@@ -131,6 +131,7 @@ export class BaseStack extends Stack {
         subnetType: SubnetType.PUBLIC
       },
       securityGroups: [lambdaSecurityGroup],
+      allowPublicSubnet: true
     });
 
     this.idempotencyTable.grantReadWriteData(this.clearanceServer);
