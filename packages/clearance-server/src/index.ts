@@ -65,11 +65,6 @@ export const handler: Handler = async (event: SQSEvent, context: Context) => {
         logger.info('Successfully fetched DB connection');
         await dbConnection.beginTransaction();
 
-        makeIdempotent(handler, {
-            persistenceStore,
-            config: idempotencyConfig
-        });
-
         const authRecord: AuthRecord = await idempotentGetAuthRecord(dbConnection, outboxId);
 
         const [receiverEmail, senderEmail, senderName, accountBalance]: string[] = await paymentService.clearPayment(dbConnection, authRecord);
