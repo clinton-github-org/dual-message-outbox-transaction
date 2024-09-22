@@ -92,13 +92,23 @@ export class BaseStack extends Stack {
       `arn:aws:lambda:ap-south-1:094274105915:layer:AWSLambdaPowertoolsTypeScriptV2:13`
     );
 
+    if (!process.env.DB_USERNAME || !process.env.DB_PASSWORD) {
+      throw new Error('DB creds not found');
+    }
+
     this.clearanceServer = new Function(this, 'clearance-server', {
       functionName: 'clearance-server',
       code: Code.fromAsset(path.join(__dirname, '../../packages/clearance-server/dist')),
       runtime: Runtime.NODEJS_20_X,
       handler: 'index.idempotentHandler',
       tracing: Tracing.ACTIVE,
-      layers: [powertoolsLayer]
+      layers: [powertoolsLayer],
+      environment: {
+        DB_HOST: this.rdsCluster.attrEndpointAddress,
+        DB_USERNAME: process.env.DB_USERNAME!,
+        DB_PASSWORD: process.env.DB_PASSWORD!,
+        DB_NAME: 'authorization'
+      }
     });
 
     this.idempotencyTable.grantReadWriteData(this.clearanceServer);
