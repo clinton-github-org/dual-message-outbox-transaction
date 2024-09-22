@@ -1,12 +1,11 @@
 import { Duration, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import { AttributeType, BillingMode, Table } from 'aws-cdk-lib/aws-dynamodb';
-import { Peer, Port, SecurityGroup, SubnetType, Vpc, VpcEndpoint, VpcEndpointType } from 'aws-cdk-lib/aws-ec2';
+import { GatewayVpcEndpoint, GatewayVpcEndpointAwsService, Peer, Port, SecurityGroup, SubnetType, Vpc } from 'aws-cdk-lib/aws-ec2';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Code, Function, LayerVersion, Runtime, Tracing } from 'aws-cdk-lib/aws-lambda';
 import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { CfnDBCluster, CfnDBSubnetGroup } from 'aws-cdk-lib/aws-rds';
-import { Service } from 'aws-cdk-lib/aws-servicediscovery';
 import { Queue } from 'aws-cdk-lib/aws-sqs';
 import { Construct } from 'constructs';
 import path = require('path');
@@ -136,6 +135,11 @@ export class BaseStack extends Stack {
     });
 
     this.idempotencyTable.grantReadWriteData(this.clearanceServer);
+
+    new GatewayVpcEndpoint(this, 'DynamoDbVpcEndpoint', {
+      vpc: this.vpc,
+      service: GatewayVpcEndpointAwsService.DYNAMODB,
+    });
 
     const sqsEventSource = new SqsEventSource(this.pollingQueue, {
       batchSize: 1
