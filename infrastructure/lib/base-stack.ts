@@ -25,7 +25,7 @@ export class BaseStack extends Stack {
 
     this.vpc = new Vpc(this, 'payment-vpc', {
       maxAzs: 2,
-      natGateways: 1,
+      natGateways: 0,
       subnetConfiguration: [
         {
           cidrMask: 24,
