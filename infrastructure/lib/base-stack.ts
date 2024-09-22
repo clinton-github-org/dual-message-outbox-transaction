@@ -24,13 +24,18 @@ export class BaseStack extends Stack {
 
     this.vpc = new Vpc(this, 'payment-vpc', {
       maxAzs: 2,
-      natGateways: 0,
+      natGateways: 1,
       subnetConfiguration: [
         {
           cidrMask: 24,
           name: 'public-subnet',
           subnetType: SubnetType.PUBLIC,
 
+        },
+        {
+          cidrMask: 24,
+          name: 'private-subnet',
+          subnetType: SubnetType.PRIVATE_WITH_EGRESS, 
         },
       ],
     });
@@ -128,18 +133,13 @@ export class BaseStack extends Stack {
       timeout: Duration.minutes(2),
       vpc: this.vpc,
       vpcSubnets: {
-        subnetType: SubnetType.PUBLIC
+        subnetType: SubnetType.PRIVATE_WITH_EGRESS  
       },
       securityGroups: [lambdaSecurityGroup],
       allowPublicSubnet: true
     });
 
     this.idempotencyTable.grantReadWriteData(this.clearanceServer);
-
-    new GatewayVpcEndpoint(this, 'DynamoDbVpcEndpoint', {
-      vpc: this.vpc,
-      service: GatewayVpcEndpointAwsService.DYNAMODB,
-    });
 
     const sqsEventSource = new SqsEventSource(this.pollingQueue, {
       batchSize: 1
