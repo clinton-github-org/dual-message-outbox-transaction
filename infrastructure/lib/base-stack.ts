@@ -107,7 +107,7 @@ export class BaseStack extends Stack {
       functionName: 'clearance-server',
       code: Code.fromAsset(path.join(__dirname, '../../packages/clearance-server/dist')),
       runtime: Runtime.NODEJS_20_X,
-      handler: 'index.idempotentHandler',
+      handler: 'index.handler',
       tracing: Tracing.ACTIVE,
       layers: [powertoolsLayer],
       environment: {
