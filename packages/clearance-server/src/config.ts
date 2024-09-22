@@ -8,6 +8,7 @@ const getTransactionSQL: string = 'SELECT * FROM auth WHERE outbox_id = ?';
 const getAccountSQL: string = 'SELECT * FROM account WHERE account_number = ?';
 const creditAccountSQL: string = 'UPDATE account SET account_balance = ? WHERE account_number = ?';
 const debitAccountSQL: string = 'UPDATE account SET account_balance = ?, reserved_amount = ? WHERE account_number = ?';
+const setAuthorized: string = 'UPDATE outbox set status = ? WHERE id = ?';
 
 const dbConfig: PoolOptions = {
     host: process.env.DB_HOST,
@@ -66,5 +67,5 @@ interface Email {
     }
 };
 
-export { Account, AuthRecord, Email, creditAccountSQL, dbConfig, debitAccountSQL, getAccountSQL, getTransactionSQL, idempotencyConfig, logger, persistenceStore, tracer };
+export { Account, AuthRecord, Email, creditAccountSQL, dbConfig, debitAccountSQL, getAccountSQL, getTransactionSQL, idempotencyConfig, logger, persistenceStore, setAuthorized, tracer };
 

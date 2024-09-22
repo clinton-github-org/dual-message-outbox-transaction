@@ -1,6 +1,6 @@
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
 import { FieldPacket, PoolConnection, RowDataPacket } from 'mysql2/promise';
-import { Account, AuthRecord, Email, creditAccountSQL, debitAccountSQL, getAccountSQL, getTransactionSQL, logger, tracer } from './config';
+import { Account, AuthRecord, Email, creditAccountSQL, debitAccountSQL, getAccountSQL, getTransactionSQL, logger, setAuthorized, tracer } from './config';
 
 export class PaymentService {
 
@@ -41,6 +41,11 @@ export class PaymentService {
         await dbConnection.execute(
             creditAccountSQL,
             [receiverAccountBalance, receiver.account_number]
+        );
+
+        await dbConnection.execute(
+            setAuthorized,
+            ['AUTHORIZED', authRecord.outbox_id]
         );
 
         logger.info('Clearance successful!');
