@@ -26,7 +26,7 @@ export const handler: Handler = async (event: SQSEvent, context: Context) => {
             logger.info('Creating new database pool');
             pool = createPool({
                 namedPlaceholders: true,
-                ...dbConfig,
+                ...dbConfig
             });
         } else {
             logger.info('Reusing existing database pool');
@@ -54,6 +54,7 @@ export const handler: Handler = async (event: SQSEvent, context: Context) => {
 
         const dbPool: Pool = getPool();
         dbConnection = await dbPool.getConnection();
+        logger.info('Successfully fetched DB connection');
         await dbConnection.beginTransaction();
 
         const authRecord: AuthRecord = await paymentService.getAuthRecord(dbConnection, outboxId);
@@ -77,7 +78,7 @@ export const handler: Handler = async (event: SQSEvent, context: Context) => {
         logger.error(`Error occurred for: ${record.body}`);
         return {
             statusCode: 500,
-            body: `Error processing message ${record.messageId}: ${error instanceof Error ? error.message : error}`
+            body: `Error processing message ${record.messageId}: ${error instanceof Error ? error.stack : error}`
         };
     } finally {
         if (dbConnection) {
