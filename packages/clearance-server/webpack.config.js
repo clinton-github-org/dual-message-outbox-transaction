@@ -23,11 +23,5 @@ module.exports = {
   },
   externals: {
     'aws-sdk': 'commonjs aws-sdk'
-  },
-  loaders: [
-    {
-      test: /\.json$/, 
-      loaders: ['json']
-    }
-  ]
+  }
 };

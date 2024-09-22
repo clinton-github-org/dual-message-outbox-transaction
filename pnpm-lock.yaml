@@ -78,9 +78,6 @@ importers:
       aws-sdk:
         specifier: ^2.1691.0
         version: 2.1691.0
-      json-loader:
-        specifier: ^0.5.7
-        version: 0.5.7
       rimraf:
         specifier: 6.0.1
         version: 6.0.1
@@ -1689,9 +1686,6 @@ packages:
     resolution: {integrity: sha512-OYu7XEzjkCQ3C5Ps3QIZsQfNpqoJyZZA99wd9aWd05NCtC5pWOkShK2mkL6HXQR6/Cy2lbNdPlZBpuQHXE63gA==}
     engines: {node: '>=4'}
     hasBin: true
-
-  json-loader@0.5.7:
-    resolution: {integrity: sha512-QLPs8Dj7lnf3e3QYS1zkCo+4ZwqOiF9d/nZnYozTISxXWCfNs9yuky5rJw4/W34s7POaNlbZmQGaB5NiXCbP4w==}
 
   json-parse-even-better-errors@2.3.1:
     resolution: {integrity: sha512-xyFwyhro/JEof6Ghe2iz2NcXoj2sloNsWr/XsERDK/oiPCfaNhl5ONfp+jQdAZRQQ0IJWNzH9zIZF7li91kh2w==}
@@ -4655,8 +4649,6 @@ snapshots:
       esprima: 4.0.1
 
   jsesc@2.5.2: {}
-
-  json-loader@0.5.7: {}
 
   json-parse-even-better-errors@2.3.1: {}
 
