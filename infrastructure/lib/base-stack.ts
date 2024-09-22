@@ -85,7 +85,7 @@ export class BaseStack extends Stack {
       },
       timeToLiveAttribute: 'expiration',
       billingMode: BillingMode.PAY_PER_REQUEST,
-      removalPolicy:RemovalPolicy.DESTROY,
+      removalPolicy: RemovalPolicy.DESTROY,
     });
 
     const powertoolsLayer = LayerVersion.fromLayerVersionArn(
@@ -104,6 +104,12 @@ export class BaseStack extends Stack {
       removalPolicy: RemovalPolicy.DESTROY,
     });
 
+    const lambdaSecurityGroup = new SecurityGroup(this, 'LambdaSG', {
+      vpc: this.vpc,
+    });
+
+    auroraSecurityGroup.addIngressRule(lambdaSecurityGroup, Port.tcp(3306), 'Allow Lambda to access RDS');
+
     this.clearanceServer = new Function(this, 'clearance-server', {
       functionName: 'clearance-server',
       code: Code.fromAsset(path.join(__dirname, '../../packages/clearance-server/dist')),
@@ -119,6 +125,12 @@ export class BaseStack extends Stack {
         DB_NAME: 'authorization'
       },
       logGroup: clearanceLogGroup,
+      timeout: Duration.seconds(30),
+      vpc: this.vpc,
+      vpcSubnets: {
+        subnetType: SubnetType.PUBLIC
+      },
+      securityGroups: [lambdaSecurityGroup],
     });
 
     this.idempotencyTable.grantReadWriteData(this.clearanceServer);

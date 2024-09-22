@@ -49,13 +49,12 @@ export const handler: Handler = async (event: SQSEvent, context: Context) => {
     const record = event.Records[0];
 
     try {
-        const dbPool: Pool = getPool();
-
         const outboxId = record.body;
         logger.info(`Starting processing of ${record.messageId}`)
 
+        const dbPool: Pool = getPool();
         dbConnection = await dbPool.getConnection();
-
+        await dbConnection.connect();
         await dbConnection.beginTransaction();
 
         const authRecord: AuthRecord = await paymentService.getAuthRecord(dbConnection, outboxId);
