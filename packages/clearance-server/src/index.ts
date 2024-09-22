@@ -23,6 +23,7 @@ const idempotentGetAuthRecord = makeIdempotent(async (dbConnection: PoolConnecti
         ...result,
         timestamp: result.timestamp.toISOString()
     };
+    return resultWithTimestampString;
 }, {
     persistenceStore,
     config: idempotencyConfig,
@@ -70,9 +71,11 @@ export const handler: Handler = async (event: SQSEvent, context: Context) => {
         await dbConnection.beginTransaction();
 
         const resultWithStringTimestamp: any = await idempotentGetAuthRecord(dbConnection, outboxId);
-        resultWithStringTimestamp.timestamp = new Date(resultWithStringTimestamp.timestamp);
 
-        const authRecord: AuthRecord = resultWithStringTimestamp;
+        const authRecord: AuthRecord = {
+            ...resultWithStringTimestamp,
+            timestamp: new Date(resultWithStringTimestamp.timestamp)
+        }
 
         const [receiverEmail, senderEmail, senderName, accountBalance]: string[] = await paymentService.clearPayment(dbConnection, authRecord);
 
