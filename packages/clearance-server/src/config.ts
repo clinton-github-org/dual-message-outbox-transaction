@@ -21,7 +21,6 @@ const persistenceStore = new DynamoDBPersistenceLayer({
     tableName: 'idempotencyTable',
 });
 const idempotencyConfig = new IdempotencyConfig({
-    eventKeyJmesPath: 'Records[0].body',
     throwOnNoIdempotencyKey: true
 });
 
@@ -50,22 +49,5 @@ interface Account {
     reserved_amount: number;
 }
 
-interface Email {
-    Source: string;
-    Destination: {
-        ToAddresses: string[];
-    },
-    Message: {
-        Subject: {
-            Data: string;
-        },
-        Body: {
-            Text: {
-                Data: string;
-            }
-        }
-    }
-};
-
-export { Account, AuthRecord, Email, creditAccountSQL, dbConfig, debitAccountSQL, getAccountSQL, getTransactionSQL, idempotencyConfig, logger, persistenceStore, setAuthorized, tracer };
+export { Account, AuthRecord, creditAccountSQL, dbConfig, debitAccountSQL, getAccountSQL, getTransactionSQL, idempotencyConfig, logger, persistenceStore, setAuthorized, tracer };
 

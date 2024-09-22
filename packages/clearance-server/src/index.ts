@@ -13,8 +13,16 @@ tracer.captureLambdaHandler({
 });
 
 const paymentService: PaymentService = new PaymentService();
-const ses = new SESClient({
-    region: 'ap-south-1'
+const sesClient = new SESClient({
+    region: 'ap-south-1',
+});
+
+const idempotentGetAuthRecord = makeIdempotent(async (dbConnection: PoolConnection, outboxId: string) => {
+    return await paymentService.getAuthRecord(dbConnection, outboxId);
+}, {
+    persistenceStore,
+    config: idempotencyConfig,
+    dataIndexArgument: 2
 });
 
 export const handler: Handler = async (event: SQSEvent, context: Context) => {
@@ -57,11 +65,16 @@ export const handler: Handler = async (event: SQSEvent, context: Context) => {
         logger.info('Successfully fetched DB connection');
         await dbConnection.beginTransaction();
 
-        const authRecord: AuthRecord = await paymentService.getAuthRecord(dbConnection, outboxId);
+        makeIdempotent(handler, {
+            persistenceStore,
+            config: idempotencyConfig
+        });
+
+        const authRecord: AuthRecord = await idempotentGetAuthRecord(dbConnection, outboxId);
 
         const [receiverEmail, senderEmail, senderName, accountBalance]: string[] = await paymentService.clearPayment(dbConnection, authRecord);
 
-        await paymentService.sendEmail(ses, receiverEmail, senderEmail, senderName, accountBalance);
+        await paymentService.sendEmail(sesClient, receiverEmail, senderEmail, senderName, accountBalance);
 
         await dbConnection.commit();
         logger.info(`Completed processing of ${record.messageId}`);
@@ -91,8 +104,3 @@ export const handler: Handler = async (event: SQSEvent, context: Context) => {
         }
     }
 };
-
-export const idempotentHandler = makeIdempotent(handler, {
-    persistenceStore,
-    config: idempotencyConfig
-});

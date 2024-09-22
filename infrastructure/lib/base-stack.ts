@@ -105,7 +105,7 @@ export class BaseStack extends Stack {
     });
 
     const lambdaSecurityGroup = new SecurityGroup(this, 'LambdaSG', {
-      vpc: this.vpc,
+      vpc: this.vpc
     });
 
     auroraSecurityGroup.addIngressRule(lambdaSecurityGroup, Port.tcp(3306), 'Allow Lambda to access RDS');
