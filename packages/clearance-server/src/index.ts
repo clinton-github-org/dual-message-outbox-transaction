@@ -7,18 +7,6 @@ import { AuthRecord, dbConfig, idempotencyConfig, logger, persistenceStore, trac
 import { PaymentService } from './service';
 
 let pool: Pool | null = null;
-const getPool = (): Pool => {
-    if (!pool) {
-        logger.info('Creating new database pool');
-        pool = createPool({
-            namedPlaceholders: true,
-            ...dbConfig,
-        });
-    } else {
-        logger.info('Reusing existing database pool');
-    }
-    return pool;
-};
 
 tracer.captureLambdaHandler({
     captureResponse: true
@@ -33,7 +21,19 @@ export const handler: Handler = async (event: SQSEvent, context: Context) => {
     logger.addContext(context);
     logger.info('Received event', { event });
 
-    const dbPool: Pool = getPool();
+    const getPool = (): Pool => {
+        if (!pool) {
+            logger.info('Creating new database pool');
+            pool = createPool({
+                namedPlaceholders: true,
+                ...dbConfig,
+            });
+        } else {
+            logger.info('Reusing existing database pool');
+        }
+        return pool;
+    };
+
     let dbConnection: PoolConnection | null = null;
 
     const segment = tracer.getSegment();
@@ -45,9 +45,12 @@ export const handler: Handler = async (event: SQSEvent, context: Context) => {
         logger.error('failed to get segment');
         return { statusCode: 500, body: `Error: Internal Server Error` };
     }
+
     const record = event.Records[0];
 
     try {
+        const dbPool: Pool = getPool();
+
         const outboxId = record.body;
         logger.info(`Starting processing of ${record.messageId}`)
 
