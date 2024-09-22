@@ -92,7 +92,7 @@ export const handler: Handler = async (event: SQSEvent, context: Context) => {
     }
 };
 
-export const idempotentHandler = makeIdempotent(handler, {
-    persistenceStore,
-    config: idempotencyConfig
-});
+// export const idempotentHandler = makeIdempotent(handler, {
+//     persistenceStore,
+//     config: idempotencyConfig
+// });
