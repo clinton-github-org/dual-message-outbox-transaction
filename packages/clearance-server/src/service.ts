@@ -13,7 +13,7 @@ export class PaymentService {
             [outboxId]
         );
 
-        logger.info('Record fetched from auth table', { rows, fields });
+        logger.info('Record fetched from auth table', { rows });
 
         if (rows.length === 0) {
             throw new Error(`No record found with id: ${outboxId}`);

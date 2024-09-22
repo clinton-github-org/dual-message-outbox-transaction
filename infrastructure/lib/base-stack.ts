@@ -125,7 +125,7 @@ export class BaseStack extends Stack {
         DB_NAME: 'authorization'
       },
       logGroup: clearanceLogGroup,
-      timeout: Duration.seconds(30),
+      timeout: Duration.minutes(2),
       vpc: this.vpc,
       vpcSubnets: {
         subnetType: SubnetType.PUBLIC
