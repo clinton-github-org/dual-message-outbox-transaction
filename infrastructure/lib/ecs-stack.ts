@@ -39,7 +39,7 @@ export class EcsStack extends Stack {
 
         this.authTaskDefinition = new FargateTaskDefinition(this, 'authorization-task-definition', {
             cpu: 256,
-            memoryLimitMiB: 1024,
+            memoryLimitMiB: 2048,
         });
         this.authTaskDefinition.addToTaskRolePolicy(this.allowSESOperations());
         this.authTaskDefinition.addToTaskRolePolicy(this.allowSQSPublish(props.pollingQueue));
@@ -49,7 +49,7 @@ export class EcsStack extends Stack {
                 file: 'DockerFile.auth'
             }),
             portMappings: [{ containerPort: 8080 }],
-            memoryLimitMiB: 512,
+            memoryLimitMiB: 1024,
             logging: LogDriver.awsLogs({
                 streamPrefix: 'auth',
                 logGroup: this.createLogGroup('AuthContainerLogGroup', '/ecs/authorization-server')
@@ -68,6 +68,7 @@ export class EcsStack extends Stack {
                 'SPRING_JPA_SHOW_SQL': 'false',
                 'SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL': 'true',
                 'SENDER_EMAIL': process.env.SENDER_EMAIL!,
+                'SERVER_PORT': '8080'
             }
         });
 
@@ -112,6 +113,7 @@ export class EcsStack extends Stack {
                 'SPRING_JPA_HIBERNATE_DDL_AUTO': 'update',
                 'SPRING_JPA_SHOW_SQL': 'false',
                 'SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL': 'true',
+                'SERVER_PORT': '8081'
             },
         });
 
