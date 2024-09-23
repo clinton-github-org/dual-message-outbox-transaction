@@ -44,7 +44,7 @@ export class BaseStack extends Stack {
     this.authorizationDBInstance = new DatabaseInstance(this, 'authorization-db-instance', {
       engine: DatabaseInstanceEngine.mysql({ version: MysqlEngineVersion.VER_8_0_35 }),
       vpc: this.vpc,
-      instanceType: InstanceType.of(InstanceClass.BURSTABLE2, InstanceSize.MICRO),
+      instanceType: InstanceType.of(InstanceClass.BURSTABLE3, InstanceSize.MICRO),
       allocatedStorage: 20,  
       databaseName: 'authorization',
       backupRetention: Duration.days(0),
