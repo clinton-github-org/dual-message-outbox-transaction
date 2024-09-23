@@ -31,7 +31,6 @@ public class AccountService {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.SERIALIZABLE)
     public Account createAccount(Account account) {
-        account.setAccountBalance(BigDecimal.ZERO);
         account.setReservedAmount(BigDecimal.ZERO);
         return accountRepository.save(account);
     }

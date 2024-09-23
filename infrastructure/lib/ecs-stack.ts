@@ -119,7 +119,8 @@ export class EcsStack extends Stack {
             cluster: this.ecsCluster,
             taskDefinition: this.authTaskDefinition,
             desiredCount: 1,
-            securityGroups: [props.authSecurityGroup]
+            securityGroups: [props.authSecurityGroup],
+            serviceName: 'polling-service'
         });
 
         new CfnOutput(this, 'LoadBalancerUrl', {
