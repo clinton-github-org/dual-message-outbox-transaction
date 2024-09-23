@@ -18,7 +18,7 @@ const dbConfig: PoolOptions = {
 };
 
 const persistenceStore = new DynamoDBPersistenceLayer({
-    tableName: 'idempotencyTable',
+    tableName: 'auth-record-idempotency-table',
 });
 const idempotencyConfig = new IdempotencyConfig({
     throwOnNoIdempotencyKey: true,
