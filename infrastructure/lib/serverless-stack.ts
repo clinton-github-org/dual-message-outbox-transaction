@@ -32,7 +32,8 @@ export class ServerlessStack extends Stack {
 
         this.pollingQueue = new Queue(this, 'auth-record-polling-queue', {
             queueName: 'auth-record-polling-queue',
-            retentionPeriod: Duration.minutes(60),
+            retentionPeriod: Duration.days(1),
+            visibilityTimeout: Duration.minutes(2),
             deadLetterQueue: {
                 queue: this.deadLetterQueue,
                 maxReceiveCount: 1
@@ -92,14 +93,6 @@ export class ServerlessStack extends Stack {
             'PowertoolsLayer',
             `arn:aws:lambda:ap-south-1:094274105915:layer:AWSLambdaPowertoolsTypeScriptV2:13`
         );
-    }
-
-    private createSecurityGroup(id: string, securityGroupName: string, description: string, vpc: Vpc): SecurityGroup {
-        return new SecurityGroup(this, id, {
-            vpc,
-            description,
-            securityGroupName,
-        });
     }
 
     private allowIdempotentTableReadWrite(): PolicyStatement {
