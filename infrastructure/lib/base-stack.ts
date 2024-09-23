@@ -54,7 +54,7 @@ export class BaseStack extends Stack {
       credentials: {
         username: process.env.DB_USERNAME,
         password: SecretValue.unsafePlainText(process.env.DB_PASSWORD)
-      }
+      },
     });
 
     this.clearanceSecurityGroup = this.createSecurityGroup('clearance-security-group', 'clearance-security-group', 'Clearance Security Group', this.vpc);
