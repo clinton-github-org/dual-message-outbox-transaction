@@ -20,7 +20,6 @@ const sesClient = new SESClient({
 export const handler: Handler = makeIdempotent(
     async (event: SQSEvent, context: Context) => {
         logger.addContext(context);
-        idempotencyConfig.registerLambdaContext(context);
         logger.info('Received event', { event });
 
         const getPool = (): Pool => {
@@ -73,6 +72,7 @@ export const handler: Handler = makeIdempotent(
 
             if (dbConnection) {
                 await dbConnection.rollback();
+        
                 logger.warn('Transaction rolled back due to error');
             }
 

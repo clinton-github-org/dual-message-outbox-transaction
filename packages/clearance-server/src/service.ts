@@ -1,6 +1,6 @@
 import { SESClient, SendEmailCommand, SendEmailCommandInput } from '@aws-sdk/client-ses';
 import { FieldPacket, PoolConnection, RowDataPacket } from 'mysql2/promise';
-import { Account, AuthRecord, creditAccountSQL, debitAccountSQL, getAccountSQL, getTransactionSQL, logger, setAuthorized, tracer } from './config';
+import { Account, AuthRecord, creditAccountSQL, debitAccountSQL, getAccountSQL, getTransactionSQL, logger, setStatus, tracer } from './config';
 
 export class PaymentService {
 
@@ -24,32 +24,41 @@ export class PaymentService {
 
     @tracer.captureMethod()
     public async clearPayment(dbConnection: PoolConnection, authRecord: AuthRecord): Promise<string[]> {
-        logger.info('Clearance started');
+        try {
+            logger.info('Clearance started');
 
-        const [receiver, sender]: Account[] = await this.getAccount(dbConnection, [authRecord.receiver_account_id, authRecord.sender_account_id]);
+            const [receiver, sender]: Account[] = await this.getAccount(dbConnection, [authRecord.receiver_account_id, authRecord.sender_account_id]);
 
-        const senderAccountBalance = sender.account_balance - authRecord.amount;
-        const senderReservedAmount = sender.reserved_amount - authRecord.amount;
-        const receiverAccountBalance = receiver.account_balance + authRecord.amount;
+            const senderAccountBalance = sender.account_balance - authRecord.amount;
+            const senderReservedAmount = sender.reserved_amount - authRecord.amount;
+            const receiverAccountBalance = receiver.account_balance + authRecord.amount;
 
-        await dbConnection.execute(
-            debitAccountSQL,
-            [senderAccountBalance, senderReservedAmount, sender.account_number]
-        );
+            await dbConnection.execute(
+                debitAccountSQL,
+                [senderAccountBalance, senderReservedAmount, sender.account_number]
+            );
 
-        await dbConnection.execute(
-            creditAccountSQL,
-            [receiverAccountBalance, receiver.account_number]
-        );
+            await dbConnection.execute(
+                creditAccountSQL,
+                [receiverAccountBalance, receiver.account_number]
+            );
 
-        await dbConnection.execute(
-            setAuthorized,
-            ['AUTHORIZED', authRecord.outbox_id]
-        );
+            await dbConnection.execute(
+                setStatus,
+                ['COMPLETED', authRecord.outbox_id]
+            );
 
-        logger.info('Clearance successful!');
+            logger.info('Clearance successful!');
 
-        return [receiver.phone_number, sender.phone_number, sender.account_name, String(senderAccountBalance)];
+            return [receiver.phone_number, sender.phone_number, sender.account_name, String(senderAccountBalance)];
+        } catch (error: unknown) {
+            await dbConnection.execute(
+                setStatus,
+                ['PENDING', authRecord.outbox_id]
+            );
+            throw error;
+        }
+
     }
 
     @tracer.captureMethod()

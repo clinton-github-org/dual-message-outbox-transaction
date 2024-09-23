@@ -8,7 +8,7 @@ const getTransactionSQL: string = 'SELECT * FROM auth WHERE outbox_id = ?';
 const getAccountSQL: string = 'SELECT * FROM account WHERE account_number = ?';
 const creditAccountSQL: string = 'UPDATE account SET account_balance = ? WHERE account_number = ?';
 const debitAccountSQL: string = 'UPDATE account SET account_balance = ?, reserved_amount = ? WHERE account_number = ?';
-const setAuthorized: string = 'UPDATE outbox set status = ? WHERE id = ?';
+const setStatus: string = 'UPDATE outbox set status = ? WHERE id = ?';
 
 const dbConfig: PoolOptions = {
     host: process.env.DB_HOST,
@@ -22,7 +22,7 @@ const persistenceStore = new DynamoDBPersistenceLayer({
 });
 const idempotencyConfig = new IdempotencyConfig({
     throwOnNoIdempotencyKey: true,
-    eventKeyJmesPath: '[0].body'
+    eventKeyJmesPath: 'Records[0].body'
 });
 
 const logger: Logger = new Logger({
@@ -50,5 +50,5 @@ interface Account {
     reserved_amount: number;
 }
 
-export { Account, AuthRecord, creditAccountSQL, dbConfig, debitAccountSQL, getAccountSQL, getTransactionSQL, idempotencyConfig, logger, persistenceStore, setAuthorized, tracer };
+export { Account, AuthRecord, creditAccountSQL, dbConfig, debitAccountSQL, getAccountSQL, getTransactionSQL, idempotencyConfig, logger, persistenceStore, setStatus, tracer };
 
