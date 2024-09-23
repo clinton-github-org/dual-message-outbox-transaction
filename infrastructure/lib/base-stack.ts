@@ -1,5 +1,5 @@
 import { Duration, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
-import { Port, SecurityGroup, SubnetType, Vpc } from 'aws-cdk-lib/aws-ec2';
+import { InstanceClass, InstanceSize, InstanceType, Port, SecurityGroup, SubnetType, Vpc } from 'aws-cdk-lib/aws-ec2';
 import { ApplicationLoadBalancer } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import { DatabaseInstance, DatabaseInstanceEngine, MysqlEngineVersion } from 'aws-cdk-lib/aws-rds';
 import { Construct } from 'constructs';
@@ -44,7 +44,8 @@ export class BaseStack extends Stack {
     this.authorizationDBInstance = new DatabaseInstance(this, 'authorization-db-instance', {
       engine: DatabaseInstanceEngine.mysql({ version: MysqlEngineVersion.VER_8_0_35 }),
       vpc: this.vpc,
-      allocatedStorage: 2,
+      instanceType: InstanceType.of(InstanceClass.BURSTABLE2, InstanceSize.MICRO),
+      allocatedStorage: 20,  
       databaseName: 'authorization',
       backupRetention: Duration.days(0),
       removalPolicy: RemovalPolicy.DESTROY,
