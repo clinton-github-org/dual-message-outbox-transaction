@@ -36,6 +36,21 @@ jobs:
           
       - name: Install dependencies
         run: pnpm install
+      
+      - name: Install dependencies
+        run: pnpm install
+
+      - uses: actions/setup-java@v3
+        with:
+          java-version: '21'
+          distribution: 'corretto'
+          cache: maven
+
+      - name: Build Auth Service
+        run: pnpm run build:auth
+
+      - name: Build Clearnace Service
+        run: pnpm run build:clearance
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
