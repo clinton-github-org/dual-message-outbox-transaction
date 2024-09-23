@@ -1,7 +1,6 @@
-import { Duration, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
+import { Duration, RemovalPolicy, SecretValue, Stack, StackProps } from 'aws-cdk-lib';
 import { InstanceClass, InstanceSize, InstanceType, Port, SecurityGroup, SubnetType, Vpc } from 'aws-cdk-lib/aws-ec2';
 import { ApplicationLoadBalancer } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
-import { Policy, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { DatabaseInstance, DatabaseInstanceEngine, MysqlEngineVersion } from 'aws-cdk-lib/aws-rds';
 import { Construct } from 'constructs';
 
@@ -46,21 +45,16 @@ export class BaseStack extends Stack {
       engine: DatabaseInstanceEngine.mysql({ version: MysqlEngineVersion.VER_8_0_35 }),
       vpc: this.vpc,
       instanceType: InstanceType.of(InstanceClass.BURSTABLE3, InstanceSize.MICRO),
-      allocatedStorage: 20,  
+      allocatedStorage: 20,
       databaseName: 'authorization',
       backupRetention: Duration.days(0),
       removalPolicy: RemovalPolicy.DESTROY,
       securityGroups: [this.authorizationDBSecurityGroup],
       instanceIdentifier: 'authorization',
-    });
-
-    new Policy(this, 'RDSConnectPolicy', {
-      statements: [
-        new PolicyStatement({
-          actions: ['rds-db:connect'],
-          resources: [`arn:aws:rds-db:${Stack.of(this).region}:${Stack.of(this).account}:dbuser:${this.authorizationDBInstance.instanceIdentifier}/clinton`],
-        }),
-      ],
+      credentials: {
+        username: process.env.DB_USERNAME,
+        password: SecretValue.unsafePlainText(process.env.DB_PASSWORD)
+      }
     });
 
     this.clearanceSecurityGroup = this.createSecurityGroup('clearance-security-group', 'clearance-security-group', 'Clearance Security Group', this.vpc);
