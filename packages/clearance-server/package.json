@@ -1,0 +1,30 @@
+{
+  "name": "nodejs-lambda-typescript",
+  "version": "1.0.0",
+  "description": "Node.js Lambda function written in TypeScript",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "webpack --config webpack.config.js",
+    "clean": "rimraf dist",
+    "start": "webpack --watch"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.656.0",
+    "@aws-sdk/lib-dynamodb": "^3.656.0",
+    "aws-xray-sdk-core": "^3.10.1",
+    "mysql2": "^2.3.3"
+  },
+  "devDependencies": {
+    "@aws-lambda-powertools/idempotency": "^2.8.0",
+    "@aws-lambda-powertools/logger": "^2.8.0",
+    "@aws-lambda-powertools/tracer": "^2.8.0",
+    "@aws-sdk/client-ses": "3.654.0",
+    "@types/aws-lambda": "^8.10.145",
+    "@types/node": "^20.5.5",
+    "rimraf": "6.0.1",
+    "ts-loader": "^9.4.2",
+    "typescript": "^5.2.2",
+    "webpack": "^5.88.0",
+    "webpack-cli": "^5.1.4"
+  }
+}

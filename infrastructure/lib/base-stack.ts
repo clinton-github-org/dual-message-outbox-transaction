@@ -1,64 +1,80 @@
-import { Duration, Stack, StackProps } from 'aws-cdk-lib';
-import { Peer, Port, SecurityGroup, SubnetType, Vpc } from 'aws-cdk-lib/aws-ec2';
-import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
-import { CfnDBCluster, CfnDBSubnetGroup } from 'aws-cdk-lib/aws-rds';
-import { Queue } from 'aws-cdk-lib/aws-sqs';
+import { Duration, RemovalPolicy, SecretValue, Stack, StackProps } from 'aws-cdk-lib';
+import { InstanceClass, InstanceSize, InstanceType, Port, SecurityGroup, SubnetType, Vpc } from 'aws-cdk-lib/aws-ec2';
+import { ApplicationLoadBalancer } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
+import { DatabaseInstance, DatabaseInstanceEngine, MysqlEngineVersion } from 'aws-cdk-lib/aws-rds';
 import { Construct } from 'constructs';
-import path = require('path');
 
 export class BaseStack extends Stack {
   public vpc: Vpc;
-  public readonly rdsCluster: CfnDBCluster;
-  public readonly pollingQueue: Queue;
-  public readonly sqsPublishPolicy: PolicyStatement;
+  public readonly authorizationDBInstance: DatabaseInstance;
+  public readonly authorizationDBSecurityGroup: SecurityGroup;
+  public readonly clearanceSecurityGroup: SecurityGroup;
+  public readonly authSecurityGroup: SecurityGroup;
+  public readonly authLoadBalancer: ApplicationLoadBalancer;
 
-  constructor(scope: Construct, id: string, props?: StackProps) {
+  constructor(scope: Construct, id: string, props: StackProps) {
     super(scope, id, props);
 
-    this.vpc = new Vpc(this, 'payment-vpc', {
+    if (!process.env.DB_USERNAME || !process.env.DB_PASSWORD) {
+      throw new Error('DB creds not found');
+    } else if (!process.env.SENDER_EMAIL) {
+      throw new Error('SENDER_EMAIL not found');
+    }
+
+    this.vpc = new Vpc(this, 'authorization-vpc', {
       maxAzs: 2,
-      natGateways: 0,
+      natGateways: 1,
+      createInternetGateway: true,
       subnetConfiguration: [
         {
           cidrMask: 24,
-          name: 'public-subnet',
+          name: 'authorization-public-subnet',
           subnetType: SubnetType.PUBLIC,
-
+        },
+        {
+          cidrMask: 24,
+          name: 'authorization-private-subnet',
+          subnetType: SubnetType.PRIVATE_WITH_EGRESS,
         },
       ],
     });
 
-    const auroraSecurityGroup = new SecurityGroup(this, 'aurora-security-group', { vpc: this.vpc });
-    auroraSecurityGroup.addIngressRule(Peer.anyIpv4(), Port.tcp(3306), 'Allow MySQL access');
+    this.authorizationDBSecurityGroup = this.createSecurityGroup('authorization-db-security-group', 'authorization-db-security-group', 'Authorization DB Security Group', this.vpc);
 
-    this.pollingQueue = new Queue(this, 'polling-queue', {
-      queueName: 'polling-queue',
-      retentionPeriod: Duration.minutes(60)
-    });
-
-    this.rdsCluster = new CfnDBCluster(this, 'payment-db-cluster', {
-      engine: 'aurora-mysql',
-      engineMode: 'serverless',
+    this.authorizationDBInstance = new DatabaseInstance(this, 'authorization-db-instance', {
+      engine: DatabaseInstanceEngine.mysql({ version: MysqlEngineVersion.VER_8_0_35 }),
+      vpc: this.vpc,
+      instanceType: InstanceType.of(InstanceClass.BURSTABLE3, InstanceSize.MICRO),
+      allocatedStorage: 20,
       databaseName: 'authorization',
-      masterUsername: process.env.DB_USERNAME!,
-      masterUserPassword: process.env.DB_PASSWORD!,
-      scalingConfiguration: {
-        autoPause: true,
-        minCapacity: 2,
-        maxCapacity: 2,
-        secondsUntilAutoPause: 300,
+      backupRetention: Duration.days(0),
+      removalPolicy: RemovalPolicy.DESTROY,
+      securityGroups: [this.authorizationDBSecurityGroup],
+      instanceIdentifier: 'authorization',
+      credentials: {
+        username: process.env.DB_USERNAME,
+        password: SecretValue.unsafePlainText(process.env.DB_PASSWORD)
       },
-      vpcSecurityGroupIds: [auroraSecurityGroup.securityGroupId],
-      dbSubnetGroupName: new CfnDBSubnetGroup(this, 'aurora-subnet-group', {
-        dbSubnetGroupDescription: 'Subnet group for Aurora DB',
-        subnetIds: this.vpc.selectSubnets({ subnetType: SubnetType.PUBLIC }).subnetIds,
-      }).ref,
     });
 
-    this.sqsPublishPolicy = new PolicyStatement({
-      effect: Effect.ALLOW,
-      actions: ['sqs:SendMessage'],
-      resources: [this.pollingQueue.queueArn]
+    this.clearanceSecurityGroup = this.createSecurityGroup('clearance-security-group', 'clearance-security-group', 'Clearance Security Group', this.vpc);
+    this.authorizationDBSecurityGroup.addIngressRule(this.clearanceSecurityGroup, Port.tcp(3306), 'Allow clearance server to access RDS');
+    this.authSecurityGroup = this.createSecurityGroup('auth-security-group', 'auth-security-group', 'Security Group for Authorization server', this.vpc);
+    this.authorizationDBSecurityGroup.addIngressRule(this.authSecurityGroup, Port.tcp(3306), 'Allow auth server to access RDS');
+
+    this.authLoadBalancer = new ApplicationLoadBalancer(this, 'auth-load-balancer', {
+      vpc: this.vpc,
+      internetFacing: true,
+      loadBalancerName: 'auth-load-balancer',
+      securityGroup: this.authSecurityGroup
+    });
+  }
+
+  private createSecurityGroup(id: string, securityGroupName: string, description: string, vpc: Vpc): SecurityGroup {
+    return new SecurityGroup(this, id, {
+      vpc,
+      description,
+      securityGroupName,
     });
   }
 };
