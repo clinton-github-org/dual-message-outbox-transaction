@@ -1,10 +1,11 @@
 import { CfnOutput, Duration, Fn, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
-import { SubnetType, Vpc } from 'aws-cdk-lib/aws-ec2';
+import { SecurityGroup, Vpc } from 'aws-cdk-lib/aws-ec2';
 import { Cluster, ContainerDefinition, ContainerImage, FargateService, FargateTaskDefinition, LogDriver } from 'aws-cdk-lib/aws-ecs';
 import { ApplicationLoadBalancedFargateService } from 'aws-cdk-lib/aws-ecs-patterns';
-import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import { ApplicationLoadBalancer } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
+import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
-import { CfnDBCluster } from 'aws-cdk-lib/aws-rds';
+import { DatabaseInstance } from 'aws-cdk-lib/aws-rds';
 import { Queue } from 'aws-cdk-lib/aws-sqs';
 import { Construct } from 'constructs';
 import path = require('path');
@@ -12,54 +13,36 @@ import path = require('path');
 interface EcsStackProps extends StackProps {
     vpc: Vpc;
     pollingQueue: Queue;
-    sqsPublishPolicy: PolicyStatement;
-    rdsCluster: CfnDBCluster;
+    authorizationDBInstance: DatabaseInstance;
+    authSecurityGroup: SecurityGroup;
+    authLoadBalancer: ApplicationLoadBalancer;
 }
 
-export class EcsTaskStack extends Stack {
+export class EcsStack extends Stack {
     public readonly ecsCluster: Cluster;
-    public readonly dbEndpoint: string;
-
     public readonly authTaskDefinition: FargateTaskDefinition;
     public readonly authorizationContainer: ContainerDefinition;
     public readonly authService: ApplicationLoadBalancedFargateService;
 
-    public readonly pollingTaskDefinition: FargateTaskDefinition;
     public readonly pollingContainer: ContainerDefinition;
     public readonly pollingService: FargateService;
 
     constructor(scope: Construct, id: string, props: EcsStackProps) {
         super(scope, id, props);
 
-        if (!process.env.DB_USERNAME || !process.env.DB_PASSWORD) {
-            throw new Error('DB creds not found');
-        }
-
-        this.dbEndpoint = props.rdsCluster.attrEndpointAddress;
-
-        this.ecsCluster = new Cluster(this, 'ecs-cluster', {
-            clusterName: 'ecs-cluster',
+        this.ecsCluster = new Cluster(this, 'auth-ecs-cluster', {
+            clusterName: 'auth-ecs-cluster',
             vpc: props.vpc,
         });
 
         // ----------- Authorization: Continuous Service with Load Balancer ------------
 
-        const senderEmail = process.env.SENDER_EMAIL;
-        if (!senderEmail) {
-            throw new Error("no email found");
-        }
-
-        const sesSendEmailPolicy = new PolicyStatement({
-            actions: ['ses:SendEmail', 'ses:SendRawEmail'],
-            resources: ['*'],
-        });
-
         this.authTaskDefinition = new FargateTaskDefinition(this, 'authorization-task-definition', {
             cpu: 256,
-            memoryLimitMiB: 1024
+            memoryLimitMiB: 1024,
         });
-
-        this.authTaskDefinition.addToTaskRolePolicy(sesSendEmailPolicy);
+        this.authTaskDefinition.addToTaskRolePolicy(this.allowSESOperations());
+        this.authTaskDefinition.addToTaskRolePolicy(this.allowSQSPublish(props.pollingQueue));
 
         this.authorizationContainer = this.authTaskDefinition.addContainer('auth-container', {
             image: ContainerImage.fromAsset(path.join(__dirname, '../../packages/authorization-server'), {
@@ -75,8 +58,8 @@ export class EcsTaskStack extends Stack {
                 'SPRING_PROFILES_ACTIVE': 'auth',
                 'SPRING_DATASOURCE_URL': Fn.join("", [
                     "jdbc:mysql://",
-                    this.dbEndpoint!,
-                    ":3306/authorization"
+                    props.authorizationDBInstance.dbInstanceEndpointAddress,
+                    `:3306/${props.authorizationDBInstance.instanceIdentifier}`
                 ]),
                 'SPRING_DATASOURCE_USERNAME': process.env.DB_USERNAME!,
                 'SPRING_DATASOURCE_PASSWORD': process.env.DB_PASSWORD!,
@@ -84,19 +67,17 @@ export class EcsTaskStack extends Stack {
                 'SPRING_JPA_HIBERNATE_DDL_AUTO': 'update',
                 'SPRING_JPA_SHOW_SQL': 'false',
                 'SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL': 'true',
-                'SENDER_EMAIL': senderEmail,
+                'SENDER_EMAIL': process.env.SENDER_EMAIL!,
             }
         });
 
         this.authService = new ApplicationLoadBalancedFargateService(this, 'auth-service', {
             cluster: this.ecsCluster,
             taskDefinition: this.authTaskDefinition,
-            publicLoadBalancer: true,
             desiredCount: 1,
-            assignPublicIp: true,
-            taskSubnets: {
-                subnetType: SubnetType.PUBLIC
-            }
+            securityGroups: [props.authSecurityGroup],
+            serviceName: 'auth-service',
+            loadBalancer: props.authLoadBalancer,
         });
 
         this.authService.targetGroup.configureHealthCheck({
@@ -107,14 +88,7 @@ export class EcsTaskStack extends Stack {
 
         // ----------- Polling: Scheduled Service ------------
 
-        this.pollingTaskDefinition = new FargateTaskDefinition(this, 'polling-task-definition', {
-            cpu: 256,
-            memoryLimitMiB: 1024,
-        });
-
-        this.pollingTaskDefinition.addToTaskRolePolicy(props.sqsPublishPolicy);
-
-        this.pollingContainer = this.pollingTaskDefinition.addContainer('polling-container', {
+        this.pollingContainer = this.authTaskDefinition.addContainer('polling-container', {
             image: ContainerImage.fromAsset(path.join(__dirname, '../../packages/authorization-server'), {
                 file: 'DockerFile.polling',
             }),
@@ -129,7 +103,7 @@ export class EcsTaskStack extends Stack {
                 'POLLING_QUEUE_URL': props.pollingQueue.queueUrl,
                 'SPRING_DATASOURCE_URL': Fn.join("", [
                     "jdbc:mysql://",
-                    this.dbEndpoint!,
+                    props.authorizationDBInstance.dbInstanceEndpointAddress,
                     ":3306/authorization"
                 ]),
                 'SPRING_DATASOURCE_USERNAME': process.env.DB_USERNAME!,
@@ -143,9 +117,9 @@ export class EcsTaskStack extends Stack {
 
         this.pollingService = new FargateService(this, 'polling-service', {
             cluster: this.ecsCluster,
-            taskDefinition: this.pollingTaskDefinition,
-            assignPublicIp: true,
+            taskDefinition: this.authTaskDefinition,
             desiredCount: 1,
+            securityGroups: [props.authSecurityGroup]
         });
 
         new CfnOutput(this, 'LoadBalancerUrl', {
@@ -159,6 +133,29 @@ export class EcsTaskStack extends Stack {
             logGroupName,
             retention: RetentionDays.ONE_DAY,
             removalPolicy: RemovalPolicy.DESTROY
+        });
+    }
+
+    private allowSESOperations(): PolicyStatement {
+        return new PolicyStatement({
+            actions: ['ses:SendEmail', 'ses:SendRawEmail'],
+            resources: ['*'],
+        })
+    }
+
+    private allowSQSPublish(pollingQueue: Queue): PolicyStatement {
+        return new PolicyStatement({
+            actions: ['sqs:SendMessage'],
+            effect: Effect.ALLOW,
+            resources: [pollingQueue.queueArn]
+        });
+    }
+
+    private createSecurityGroup(id: string, securityGroupName: string, description: string, vpc: Vpc): SecurityGroup {
+        return new SecurityGroup(this, id, {
+            vpc,
+            description,
+            securityGroupName,
         });
     }
 };

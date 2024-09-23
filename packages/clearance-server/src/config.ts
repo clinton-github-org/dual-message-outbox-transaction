@@ -21,7 +21,8 @@ const persistenceStore = new DynamoDBPersistenceLayer({
     tableName: 'idempotencyTable',
 });
 const idempotencyConfig = new IdempotencyConfig({
-    throwOnNoIdempotencyKey: true
+    throwOnNoIdempotencyKey: true,
+    eventKeyJmesPath: '[0].body'
 });
 
 const logger: Logger = new Logger({

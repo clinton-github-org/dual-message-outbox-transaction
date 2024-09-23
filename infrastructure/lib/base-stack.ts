@@ -1,157 +1,75 @@
 import { Duration, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
-import { AttributeType, BillingMode, Table } from 'aws-cdk-lib/aws-dynamodb';
-import { GatewayVpcEndpoint, GatewayVpcEndpointAwsService, Peer, Port, SecurityGroup, SubnetType, Vpc } from 'aws-cdk-lib/aws-ec2';
-import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
-import { Code, Function, LayerVersion, Runtime, Tracing } from 'aws-cdk-lib/aws-lambda';
-import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
-import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
-import { CfnDBCluster, CfnDBSubnetGroup } from 'aws-cdk-lib/aws-rds';
-import { Queue } from 'aws-cdk-lib/aws-sqs';
+import { Port, SecurityGroup, SubnetType, Vpc } from 'aws-cdk-lib/aws-ec2';
+import { ApplicationLoadBalancer } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
+import { DatabaseInstance, DatabaseInstanceEngine, MysqlEngineVersion } from 'aws-cdk-lib/aws-rds';
 import { Construct } from 'constructs';
-import path = require('path');
 
 export class BaseStack extends Stack {
   public vpc: Vpc;
-  public readonly rdsCluster: CfnDBCluster;
-  public readonly pollingQueue: Queue;
-  public readonly deadLetterQueue: Queue;
-  public readonly sqsPublishPolicy: PolicyStatement;
-  public readonly idempotencyTable: Table;
-  public readonly clearanceServer: Function;
+  public readonly authorizationDBInstance: DatabaseInstance;
+  public readonly authorizationDBSecurityGroup: SecurityGroup;
+  public readonly clearanceSecurityGroup: SecurityGroup;
+  public readonly authSecurityGroup: SecurityGroup;
+  public readonly authLoadBalancer: ApplicationLoadBalancer;
 
-  constructor(scope: Construct, id: string, props?: StackProps) {
+  constructor(scope: Construct, id: string, props: StackProps) {
     super(scope, id, props);
 
-    this.vpc = new Vpc(this, 'payment-vpc', {
+    if (!process.env.DB_USERNAME || !process.env.DB_PASSWORD) {
+      throw new Error('DB creds not found');
+    } else if (!process.env.SENDER_EMAIL) {
+      throw new Error('SENDER_EMAIL not found');
+    }
+
+    this.vpc = new Vpc(this, 'authorization-vpc', {
       maxAzs: 2,
       natGateways: 1,
+      createInternetGateway: false,
       subnetConfiguration: [
         {
           cidrMask: 24,
-          name: 'public-subnet',
+          name: 'authorization-public-subnet',
           subnetType: SubnetType.PUBLIC,
-
         },
         {
           cidrMask: 24,
-          name: 'private-subnet',
-          subnetType: SubnetType.PRIVATE_WITH_EGRESS, 
+          name: 'authorization-private-subnet',
+          subnetType: SubnetType.PRIVATE_WITH_EGRESS,
         },
       ],
     });
 
-    const auroraSecurityGroup = new SecurityGroup(this, 'aurora-security-group', { vpc: this.vpc });
-    auroraSecurityGroup.addIngressRule(Peer.anyIpv4(), Port.tcp(3306), 'Allow MySQL access');
+    this.authorizationDBSecurityGroup = this.createSecurityGroup('authorization-db-security-group', 'authorization-db-security-group', 'Authorization DB Security Group', this.vpc);
 
-    this.deadLetterQueue = new Queue(this, 'dead-letter-queue', {
-      queueName: 'dead-letter-queue',
-      retentionPeriod: Duration.days(1)
-    });
-
-    this.pollingQueue = new Queue(this, 'polling-queue', {
-      queueName: 'polling-queue',
-      retentionPeriod: Duration.minutes(60),
-      deadLetterQueue: {
-        queue: this.deadLetterQueue,
-        maxReceiveCount: 1
-      }
-    });
-
-    this.rdsCluster = new CfnDBCluster(this, 'payment-db-cluster', {
-      engine: 'aurora-mysql',
-      engineMode: 'serverless',
+    this.authorizationDBInstance = new DatabaseInstance(this, 'authorization-db-instance', {
+      engine: DatabaseInstanceEngine.mysql({ version: MysqlEngineVersion.VER_8_0_35 }),
+      vpc: this.vpc,
+      allocatedStorage: 2,
       databaseName: 'authorization',
-      masterUsername: process.env.DB_USERNAME!,
-      masterUserPassword: process.env.DB_PASSWORD!,
-      scalingConfiguration: {
-        autoPause: true,
-        minCapacity: 2,
-        maxCapacity: 2,
-        secondsUntilAutoPause: 300,
-      },
-      vpcSecurityGroupIds: [auroraSecurityGroup.securityGroupId],
-      dbSubnetGroupName: new CfnDBSubnetGroup(this, 'aurora-subnet-group', {
-        dbSubnetGroupDescription: 'Subnet group for Aurora DB',
-        subnetIds: this.vpc.selectSubnets({ subnetType: SubnetType.PUBLIC }).subnetIds,
-      }).ref,
-    });
-
-    this.sqsPublishPolicy = new PolicyStatement({
-      effect: Effect.ALLOW,
-      actions: ['sqs:SendMessage'],
-      resources: [this.pollingQueue.queueArn]
-    });
-
-    this.idempotencyTable = new Table(this, 'idempotencyTable', {
-      tableName: 'idempotencyTable',
-      partitionKey: {
-        name: 'id',
-        type: AttributeType.STRING,
-      },
-      timeToLiveAttribute: 'expiration',
-      billingMode: BillingMode.PAY_PER_REQUEST,
+      backupRetention: Duration.days(0),
       removalPolicy: RemovalPolicy.DESTROY,
+      securityGroups: [this.authorizationDBSecurityGroup],
+      instanceIdentifier: 'authorization',
     });
 
-    const powertoolsLayer = LayerVersion.fromLayerVersionArn(
-      this,
-      'PowertoolsLayer',
-      `arn:aws:lambda:ap-south-1:094274105915:layer:AWSLambdaPowertoolsTypeScriptV2:13`
-    );
+    this.clearanceSecurityGroup = this.createSecurityGroup('clearance-security-group', 'clearance-security-group', 'Clearance Security Group', this.vpc);
+    this.authorizationDBSecurityGroup.addIngressRule(this.clearanceSecurityGroup, Port.tcp(3306), 'Allow clearance server to access RDS');
+    this.authSecurityGroup = this.createSecurityGroup('auth-security-group', 'auth-security-group', 'Security Group for Authorization server', this.vpc);
+    this.authorizationDBSecurityGroup.addIngressRule(this.authSecurityGroup, Port.tcp(3306), 'Allow auth server to access RDS');
 
-    if (!process.env.DB_USERNAME || !process.env.DB_PASSWORD) {
-      throw new Error('DB creds not found');
-    }
-
-    const clearanceLogGroup = new LogGroup(this, id, {
-      logGroupName: 'clearance-server',
-      retention: RetentionDays.ONE_DAY,
-      removalPolicy: RemovalPolicy.DESTROY,
-    });
-
-    const lambdaSecurityGroup = new SecurityGroup(this, 'LambdaSG', {
+    this.authLoadBalancer = new ApplicationLoadBalancer(this, 'auth-load-balancer', {
       vpc: this.vpc,
+      internetFacing: true,
+      loadBalancerName: 'auth-load-balancer',
+      securityGroup: this.authSecurityGroup
     });
+  }
 
-    auroraSecurityGroup.addIngressRule(lambdaSecurityGroup, Port.tcp(3306), 'Allow Lambda to access RDS');
-
-    this.clearanceServer = new Function(this, 'clearance-server', {
-      functionName: 'clearance-server',
-      code: Code.fromAsset(path.join(__dirname, '../../packages/clearance-server/dist')),
-      runtime: Runtime.NODEJS_20_X,
-      handler: 'index.handler',
-      tracing: Tracing.ACTIVE,
-      layers: [powertoolsLayer],
-      environment: {
-        NODE_OPTIONS: '--enable-source-maps',
-        DB_HOST: this.rdsCluster.attrEndpointAddress,
-        DB_USERNAME: process.env.DB_USERNAME!,
-        DB_PASSWORD: process.env.DB_PASSWORD!,
-        DB_NAME: 'authorization'
-      },
-      logGroup: clearanceLogGroup,
-      timeout: Duration.minutes(2),
-      vpc: this.vpc,
-      vpcSubnets: {
-        subnetType: SubnetType.PRIVATE_WITH_EGRESS  
-      },
-      securityGroups: [lambdaSecurityGroup],
-      allowPublicSubnet: true
+  private createSecurityGroup(id: string, securityGroupName: string, description: string, vpc: Vpc): SecurityGroup {
+    return new SecurityGroup(this, id, {
+      vpc,
+      description,
+      securityGroupName,
     });
-
-    this.idempotencyTable.grantReadWriteData(this.clearanceServer);
-
-    const sqsEventSource = new SqsEventSource(this.pollingQueue, {
-      batchSize: 1
-    });
-
-    this.clearanceServer.addEventSource(sqsEventSource);
-
-    const sesSendEmailPolicy = new PolicyStatement({
-      actions: ['ses:SendEmail', 'ses:SendRawEmail'],
-      resources: ['*'],
-    });
-
-    this.clearanceServer.addToRolePolicy(sesSendEmailPolicy);
   }
 };
