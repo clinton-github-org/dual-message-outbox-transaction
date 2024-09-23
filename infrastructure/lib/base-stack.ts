@@ -24,7 +24,7 @@ export class BaseStack extends Stack {
     this.vpc = new Vpc(this, 'authorization-vpc', {
       maxAzs: 2,
       natGateways: 1,
-      createInternetGateway: false,
+      createInternetGateway: true,
       subnetConfiguration: [
         {
           cidrMask: 24,
