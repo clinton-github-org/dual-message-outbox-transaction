@@ -19,11 +19,6 @@ const tracer: Tracer = new Tracer({
     enabled: true
 });
 const segment = tracer.getSegment();
-let subsegment: Subsegment | undefined;
-if (segment) {
-    subsegment = segment.addNewSubsegment(`## ${process.env._HANDLER}`);
-    tracer.setSegment(subsegment);
-}
 tracer.annotateColdStart();
 tracer.addServiceNameAnnotation();
 
@@ -34,6 +29,11 @@ const sesClient = new SESClient({
 
 export const handler: Handler = makeIdempotent(
     async (event: SQSEvent, context: Context) => {
+        let subsegment: Subsegment | undefined;
+        if (segment) {
+            subsegment = segment.addNewSubsegment(`## ${process.env._HANDLER}`);
+            tracer.setSegment(subsegment);
+        }
         logger.addContext(context);
         logger.info('Received event', { event });
 

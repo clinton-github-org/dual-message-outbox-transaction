@@ -53,9 +53,9 @@ export class PaymentService {
             const senderReservedAmount = sender.reserved_amount - authRecord.amount;
             const receiverAccountBalance = receiver.account_balance + authRecord.amount;
 
-            this.tracer.putMetadata('senderAccountBalance', senderAccountBalance);
-            this.tracer.putMetadata('senderReservedAmount', senderReservedAmount);
-            this.tracer.putMetadata('receiverAccountBalance', receiverAccountBalance);
+            this.tracer.putAnnotation('senderAccountBalance', senderAccountBalance);
+            this.tracer.putAnnotation('senderReservedAmount', senderReservedAmount);
+            this.tracer.putAnnotation('receiverAccountBalance', receiverAccountBalance);
 
             await dbConnection.execute(
                 debitAccountSQL,
@@ -95,7 +95,7 @@ export class PaymentService {
         }
     }
 
-    private async getAccount(dbConnection: PoolConnection, accountNumbers: number[]): Promise<Account[]> {
+    public async getAccount(dbConnection: PoolConnection, accountNumbers: number[]): Promise<Account[]> {
         const subsegment: Subsegment = this.parentSubsegment.addNewSubsegment('### Account');
         this.tracer.setSegment(subsegment);
         this.logger.info('Fetching Accounts');
