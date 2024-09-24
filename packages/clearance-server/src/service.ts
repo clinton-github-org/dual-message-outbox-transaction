@@ -1,6 +1,7 @@
 import { Logger } from '@aws-lambda-powertools/logger';
 import { Tracer } from '@aws-lambda-powertools/tracer';
 import { SESClient, SendEmailCommand, SendEmailCommandInput } from '@aws-sdk/client-ses';
+import { DeleteMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
 import { Subsegment } from 'aws-xray-sdk-core';
 import { FieldPacket, PoolConnection, RowDataPacket } from 'mysql2/promise';
 import { Account, AuthRecord, creditAccountSQL, debitAccountSQL, getAccountSQL, getTransactionSQL, setStatus } from './config';
@@ -8,28 +9,28 @@ import { Account, AuthRecord, creditAccountSQL, debitAccountSQL, getAccountSQL, 
 export class PaymentService {
 
     private readonly logger: Logger;
-    private readonly tracer: Tracer;
+    private tracer: Tracer | null = null;
     public parentSubsegment: Subsegment | null = null;
 
-    constructor(logger: Logger, tracer: Tracer) {
+    constructor(logger: Logger) {
         this.logger = logger;
-        this.tracer = tracer;
     }
 
-    public setParentSubSegment(subsegment: Subsegment) {
+    public setParentSubSegmentAndTracer(subsegment: Subsegment, tracer: Tracer) {
         this.parentSubsegment = subsegment;
+        this.tracer! = tracer;
     }
 
     public async getAuthRecord(dbConnection: PoolConnection, outboxId: string): Promise<AuthRecord> {
         const subsegment: Subsegment = this.parentSubsegment!.addNewSubsegment('### AuthRecord');
-        this.tracer.setSegment(subsegment);
+        this.tracer!.setSegment(subsegment);
         this.logger.info('Fetching transaction');
 
         const [rows, fields]: [RowDataPacket[], FieldPacket[]] = await dbConnection.execute(
             getTransactionSQL,
             [outboxId]
         );
-        this.tracer.addResponseAsMetadata(rows, 'AuthRecord');
+        this.tracer!.addResponseAsMetadata(rows, 'AuthRecord');
 
         if (rows.length === 0) {
             throw new Error(`No record found with id: ${outboxId}`);
@@ -37,7 +38,7 @@ export class PaymentService {
 
         if (this.parentSubsegment && subsegment) {
             subsegment.close();
-            this.tracer.setSegment(this.parentSubsegment);
+            this.tracer!.setSegment(this.parentSubsegment);
         }
 
         return rows[0] as AuthRecord;
@@ -45,20 +46,20 @@ export class PaymentService {
 
     public async clearPayment(dbConnection: PoolConnection, authRecord: AuthRecord): Promise<string[]> {
         const subsegment: Subsegment = this.parentSubsegment!.addNewSubsegment('### ClearPayment');
-        this.tracer.setSegment(subsegment);
+        this.tracer!.setSegment(subsegment);
         try {
             this.logger.info('Clearance started');
 
             const [receiver, sender]: Account[] = await this.getAccount(dbConnection, [authRecord.receiver_account_id, authRecord.sender_account_id]);
-            this.tracer.addResponseAsMetadata([receiver, sender], 'ClearPayment');
+            this.tracer!.addResponseAsMetadata([receiver, sender], 'ClearPayment');
 
             const senderAccountBalance = sender.account_balance - authRecord.amount;
             const senderReservedAmount = sender.reserved_amount - authRecord.amount;
             const receiverAccountBalance = receiver.account_balance + authRecord.amount;
 
-            this.tracer.putAnnotation('senderAccountBalance', senderAccountBalance);
-            this.tracer.putAnnotation('senderReservedAmount', senderReservedAmount);
-            this.tracer.putAnnotation('receiverAccountBalance', receiverAccountBalance);
+            this.tracer!.putAnnotation('senderAccountBalance', senderAccountBalance);
+            this.tracer!.putAnnotation('senderReservedAmount', senderReservedAmount);
+            this.tracer!.putAnnotation('receiverAccountBalance', receiverAccountBalance);
 
             await dbConnection.execute(
                 debitAccountSQL,
@@ -79,7 +80,7 @@ export class PaymentService {
 
             if (this.parentSubsegment && subsegment) {
                 subsegment.close();
-                this.tracer.setSegment(this.parentSubsegment);
+                this.tracer!.setSegment(this.parentSubsegment);
             }
 
             return [receiver.phone_number, sender.phone_number, sender.account_name, String(senderAccountBalance)];
@@ -93,14 +94,14 @@ export class PaymentService {
         } finally {
             if (this.parentSubsegment && subsegment) {
                 subsegment.close();
-                this.tracer.setSegment(this.parentSubsegment);
+                this.tracer!.setSegment(this.parentSubsegment);
             }
         }
     }
 
     public async getAccount(dbConnection: PoolConnection, accountNumbers: number[]): Promise<Account[]> {
         const subsegment: Subsegment = this.parentSubsegment!.addNewSubsegment('### Account');
-        this.tracer.setSegment(subsegment);
+        this.tracer!.setSegment(subsegment);
         this.logger.info('Fetching Accounts');
 
         let accounts: Account[] = [];
@@ -118,10 +119,10 @@ export class PaymentService {
             accounts[i] = rows[0] as Account;
         }
 
-        this.tracer.addResponseAsMetadata(accounts, 'Account');
+        this.tracer!.addResponseAsMetadata(accounts, 'Account');
         if (this.parentSubsegment && subsegment) {
             subsegment.close();
-            this.tracer.setSegment(this.parentSubsegment);
+            this.tracer!.setSegment(this.parentSubsegment);
         }
 
         return accounts;
@@ -129,7 +130,7 @@ export class PaymentService {
 
     public async sendEmail(sesClient: SESClient, receiverEmail: string, senderEmail: string, senderName: string, accountBalance: string) {
         const subsegment: Subsegment = this.parentSubsegment!.addNewSubsegment('### Email');
-        this.tracer.setSegment(subsegment);
+        this.tracer!.setSegment(subsegment);
         this.logger.info('Sending Email');
 
         const params: SendEmailCommandInput = {
@@ -149,11 +150,30 @@ export class PaymentService {
             }
         }
 
-        const data = await sesClient.send(new SendEmailCommand(params));
-        this.tracer.addResponseAsMetadata(data, 'Email');
+        const response = await sesClient.send(new SendEmailCommand(params));
+        this.tracer!.addResponseAsMetadata(response, 'Email');
         if (this.parentSubsegment && subsegment) {
             subsegment.close();
-            this.tracer.setSegment(this.parentSubsegment);
+            this.tracer!.setSegment(this.parentSubsegment);
         }
     }
+
+    public async deleteMessage(receiptHandle: string, queueUrl: string, sqsClient: SQSClient) {
+        const subsegment: Subsegment = this.parentSubsegment!.addNewSubsegment('### DeleteMessage');
+        this.tracer!.setSegment(subsegment);
+        this.logger.info(`Deleting record with receiptHandle: ${receiptHandle}`);
+
+        const deleteCommand = new DeleteMessageCommand({
+            QueueUrl: queueUrl,
+            ReceiptHandle: receiptHandle,
+        });
+
+        const response = await sqsClient.send(deleteCommand);
+
+        this.tracer!.addResponseAsMetadata(response, 'DeleteMessage');
+        if (this.parentSubsegment && subsegment) {
+            subsegment.close();
+            this.tracer!.setSegment(this.parentSubsegment);
+        }
+    };
 }

@@ -33,7 +33,7 @@ export class ServerlessStack extends Stack {
         this.pollingQueue = new Queue(this, 'auth-record-polling-queue', {
             queueName: 'auth-record-polling-queue',
             retentionPeriod: Duration.days(1),
-            visibilityTimeout: Duration.minutes(2),
+            visibilityTimeout: Duration.minutes(3),
             deadLetterQueue: {
                 queue: this.deadLetterQueue,
                 maxReceiveCount: 1
@@ -63,7 +63,8 @@ export class ServerlessStack extends Stack {
                 DB_HOST: props.authorizationDBInstance.dbInstanceEndpointAddress,
                 DB_USERNAME: process.env.DB_USERNAME!,
                 DB_PASSWORD: process.env.DB_PASSWORD!,
-                DB_NAME: props.authorizationDBInstance.instanceIdentifier
+                DB_NAME: props.authorizationDBInstance.instanceIdentifier,
+                POLLING_URL: this.pollingQueue.queueUrl
             },
             logGroup: this.createLogGroup('clearance-server-log-group', '/lambda/clearance-server'),
             timeout: Duration.minutes(2),
