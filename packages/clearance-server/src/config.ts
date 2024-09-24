@@ -1,7 +1,5 @@
 import { IdempotencyConfig } from "@aws-lambda-powertools/idempotency";
 import { DynamoDBPersistenceLayer } from "@aws-lambda-powertools/idempotency/dynamodb";
-import { Logger } from "@aws-lambda-powertools/logger";
-import { Tracer } from "@aws-lambda-powertools/tracer";
 import { PoolOptions } from "mysql2/promise";
 
 const getTransactionSQL: string = 'SELECT * FROM auth WHERE outbox_id = ?';
@@ -25,13 +23,6 @@ const idempotencyConfig = new IdempotencyConfig({
     eventKeyJmesPath: 'Records[0].body'
 });
 
-const logger: Logger = new Logger({
-    serviceName: 'clearance-sever'
-});
-const tracer: Tracer = new Tracer({
-    serviceName: 'clearance-sever'
-});
-
 interface AuthRecord {
     id: number;
     amount: number;
@@ -50,5 +41,5 @@ interface Account {
     reserved_amount: number;
 }
 
-export { Account, AuthRecord, creditAccountSQL, dbConfig, debitAccountSQL, getAccountSQL, getTransactionSQL, idempotencyConfig, logger, persistenceStore, setStatus, tracer };
+export { Account, AuthRecord, creditAccountSQL, dbConfig, debitAccountSQL, getAccountSQL, getTransactionSQL, idempotencyConfig, persistenceStore, setStatus };
 

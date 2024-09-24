@@ -1,24 +1,39 @@
 import { makeIdempotent } from '@aws-lambda-powertools/idempotency';
+import { Logger } from "@aws-lambda-powertools/logger";
+import { Tracer } from "@aws-lambda-powertools/tracer";
 import { SESClient } from "@aws-sdk/client-ses";
 import { Context, Handler, SQSEvent } from 'aws-lambda';
-import type { Subsegment } from 'aws-xray-sdk-core';
+import { Subsegment } from 'aws-xray-sdk-core';
 import { Pool, PoolConnection, createPool } from 'mysql2/promise';
-import { AuthRecord, dbConfig, idempotencyConfig, logger, persistenceStore, tracer } from './config';
+import { AuthRecord, dbConfig, idempotencyConfig, persistenceStore, } from './config';
 import { PaymentService } from './service';
 
 let pool: Pool | null = null;
 
-tracer.captureLambdaHandler({
-    captureResponse: true
+const logger: Logger = new Logger({
+    serviceName: 'clearance-sever',
 });
+const tracer: Tracer = new Tracer({
+    serviceName: 'clearance-sever',
+    captureHTTPsRequests: true,
+    enabled: true
+});
+const segment = tracer.getSegment();
+tracer.annotateColdStart();
+tracer.addServiceNameAnnotation();
 
-const paymentService: PaymentService = new PaymentService();
+const paymentService: PaymentService = new PaymentService(logger, tracer);
 const sesClient = new SESClient({
     region: 'ap-south-1',
 });
 
 export const handler: Handler = makeIdempotent(
     async (event: SQSEvent, context: Context) => {
+        let subsegment: Subsegment | undefined;
+        if (segment) {
+            subsegment = segment.addNewSubsegment(`## ${process.env._HANDLER}`);
+            tracer.setSegment(subsegment);
+        }
         logger.addContext(context);
         logger.info('Received event', { event });
 
@@ -36,16 +51,6 @@ export const handler: Handler = makeIdempotent(
         };
 
         let dbConnection: PoolConnection | null = null;
-
-        const segment = tracer.getSegment();
-        let handlerSubsegment: Subsegment | undefined;
-        if (segment) {
-            handlerSubsegment = segment.addNewSubsegment(`## ${process.env._HANDLER}`);
-            tracer.setSegment(handlerSubsegment);
-        } else {
-            logger.error('failed to get segment');
-            return { statusCode: 500, body: `Error: Internal Server Error` };
-        }
 
         const record = event.Records[0];
 
@@ -65,29 +70,26 @@ export const handler: Handler = makeIdempotent(
 
             await dbConnection.commit();
             logger.info(`Completed processing of ${record.messageId}`);
-
-            return { statusCode: 200, body: `Successfully processed message: ${record.messageId}` };
+            tracer.addResponseAsMetadata(`Successfully processed message: ${record.messageId}`, process.env._HANDLER);
         } catch (error: unknown) {
             logger.error('Error occurred', { error });
 
             if (dbConnection) {
                 await dbConnection.rollback();
-        
+
                 logger.warn('Transaction rolled back due to error');
             }
 
             logger.error(`Error occurred for: ${record.body}`);
-            return {
-                statusCode: 500,
-                body: `Error processing message ${record.messageId}: ${error instanceof Error ? error.stack : error}`
-            };
+            tracer.addErrorAsMetadata(error as Error);
+            throw new Error(error instanceof Error ? error.message : `Error with record: ${record}`);
         } finally {
             if (dbConnection) {
                 dbConnection.release();
             }
 
-            if (segment && handlerSubsegment) {
-                handlerSubsegment.close();
+            if (segment && subsegment) {
+                subsegment.close();
                 tracer.setSegment(segment);
             }
         }
