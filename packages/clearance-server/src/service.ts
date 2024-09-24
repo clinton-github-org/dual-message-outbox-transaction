@@ -9,16 +9,19 @@ export class PaymentService {
 
     private readonly logger: Logger;
     private readonly tracer: Tracer;
-    private readonly parentSubsegment: Subsegment;
+    public parentSubsegment: Subsegment | null = null;
 
     constructor(logger: Logger, tracer: Tracer) {
         this.logger = logger;
         this.tracer = tracer;
-        this.parentSubsegment = this.tracer.getSegment() as Subsegment;
+    }
+
+    public setParentSubSegment(subsegment: Subsegment) {
+        this.parentSubsegment = subsegment;
     }
 
     public async getAuthRecord(dbConnection: PoolConnection, outboxId: string): Promise<AuthRecord> {
-        const subsegment: Subsegment = this.parentSubsegment.addNewSubsegment('### AuthRecord');
+        const subsegment: Subsegment = this.parentSubsegment!.addNewSubsegment('### AuthRecord');
         this.tracer.setSegment(subsegment);
         this.logger.info('Fetching transaction');
 
@@ -41,7 +44,7 @@ export class PaymentService {
     }
 
     public async clearPayment(dbConnection: PoolConnection, authRecord: AuthRecord): Promise<string[]> {
-        const subsegment: Subsegment = this.parentSubsegment.addNewSubsegment('### ClearPayment');
+        const subsegment: Subsegment = this.parentSubsegment!.addNewSubsegment('### ClearPayment');
         this.tracer.setSegment(subsegment);
         try {
             this.logger.info('Clearance started');
@@ -96,7 +99,7 @@ export class PaymentService {
     }
 
     public async getAccount(dbConnection: PoolConnection, accountNumbers: number[]): Promise<Account[]> {
-        const subsegment: Subsegment = this.parentSubsegment.addNewSubsegment('### Account');
+        const subsegment: Subsegment = this.parentSubsegment!.addNewSubsegment('### Account');
         this.tracer.setSegment(subsegment);
         this.logger.info('Fetching Accounts');
 
@@ -125,7 +128,7 @@ export class PaymentService {
     }
 
     public async sendEmail(sesClient: SESClient, receiverEmail: string, senderEmail: string, senderName: string, accountBalance: string) {
-        const subsegment: Subsegment = this.parentSubsegment.addNewSubsegment('### Email');
+        const subsegment: Subsegment = this.parentSubsegment!.addNewSubsegment('### Email');
         this.tracer.setSegment(subsegment);
         this.logger.info('Sending Email');
 

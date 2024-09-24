@@ -18,7 +18,6 @@ const tracer: Tracer = new Tracer({
     captureHTTPsRequests: true,
     enabled: true
 });
-const segment = tracer.getSegment();
 tracer.annotateColdStart();
 tracer.addServiceNameAnnotation();
 
@@ -29,10 +28,14 @@ const sesClient = new SESClient({
 
 export const handler: Handler = makeIdempotent(
     async (event: SQSEvent, context: Context) => {
+        const segment = tracer.getSegment();
         let subsegment: Subsegment | undefined;
         if (segment) {
             subsegment = segment.addNewSubsegment(`## ${process.env._HANDLER}`);
             tracer.setSegment(subsegment);
+            paymentService.setParentSubSegment(subsegment);
+        } else {
+            throw new Error("x-ray segment not found");
         }
         logger.addContext(context);
         logger.info('Received event', { event });
