@@ -33,10 +33,11 @@ export class ServerlessStack extends Stack {
         this.pollingQueue = new Queue(this, 'auth-record-polling-queue', {
             queueName: 'auth-record-polling-queue',
             retentionPeriod: Duration.days(1),
-            visibilityTimeout: Duration.minutes(3),
+            visibilityTimeout: Duration.minutes(10),
+            deliveryDelay: Duration.seconds(15),
             deadLetterQueue: {
                 queue: this.deadLetterQueue,
-                maxReceiveCount: 1
+                maxReceiveCount: 2
             }
         });
 
@@ -67,7 +68,7 @@ export class ServerlessStack extends Stack {
                 POLLING_URL: this.pollingQueue.queueUrl
             },
             logGroup: this.createLogGroup('clearance-server-log-group', '/lambda/clearance-server'),
-            timeout: Duration.minutes(2),
+            timeout: Duration.minutes(5),
             vpc: props.vpc,
             vpcSubnets: {
                 subnetType: SubnetType.PRIVATE_WITH_EGRESS
