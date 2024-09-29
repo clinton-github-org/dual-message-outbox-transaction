@@ -27,7 +27,7 @@ export class ServerlessStack extends Stack {
 
         this.deadLetterQueue = new Queue(this, 'auth-record-dead-letter-queue', {
             queueName: 'auth-record-dead-letter-queue',
-            retentionPeriod: Duration.days(1)
+            retentionPeriod: Duration.days(1),
         });
 
         this.pollingQueue = new Queue(this, 'auth-record-polling-queue', {
@@ -37,7 +37,7 @@ export class ServerlessStack extends Stack {
             deliveryDelay: Duration.seconds(15),
             deadLetterQueue: {
                 queue: this.deadLetterQueue,
-                maxReceiveCount: 2
+                maxReceiveCount: 1
             }
         });
 
@@ -58,6 +58,7 @@ export class ServerlessStack extends Stack {
             runtime: Runtime.NODEJS_20_X,
             handler: 'index.handler',
             tracing: Tracing.ACTIVE,
+            retryAttempts: 0,
             layers: [this.createPowerToolsLayer()],
             environment: {
                 NODE_OPTIONS: '--enable-source-maps',

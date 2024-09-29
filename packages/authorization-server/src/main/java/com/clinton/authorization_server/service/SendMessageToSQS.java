@@ -13,6 +13,7 @@ import software.amazon.awssdk.services.sqs.model.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * @author Clinton Fernandes
@@ -36,7 +37,7 @@ public class SendMessageToSQS {
     public void sendMessageInBatch(List<Long> authorizedTransactions) {
         List<SendMessageBatchRequestEntry> entries = new ArrayList<>();
         for (int i = 0; i < authorizedTransactions.size(); i++) {
-            entries.add((SendMessageBatchRequestEntry.builder().id(String.valueOf(i+1)).messageBody(String.valueOf(authorizedTransactions.get(i))).build()));
+            entries.add((SendMessageBatchRequestEntry.builder().id(UUID.randomUUID().toString()).messageBody(String.valueOf(authorizedTransactions.get(i))).build()));
             if ((i+1) % 10 == 0) {
                 this.sendMessagesBatch(entries);
                 entries = new ArrayList<>();
