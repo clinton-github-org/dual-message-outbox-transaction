@@ -1,4 +1,4 @@
-import { makeIdempotent } from '@aws-lambda-powertools/idempotency';
+import { IdempotencyAlreadyInProgressError, makeIdempotent } from '@aws-lambda-powertools/idempotency';
 import { Logger } from "@aws-lambda-powertools/logger";
 import { Tracer } from "@aws-lambda-powertools/tracer";
 import { SESClient } from "@aws-sdk/client-ses";
@@ -80,6 +80,11 @@ export const handler: Handler = makeIdempotent(
             logger.info(`Completed processing of ${record.messageId}`);
             tracer.addResponseAsMetadata(`Successfully processed message: ${record.messageId}`, process.env._HANDLER);
         } catch (error: unknown) {
+            if (error instanceof IdempotencyAlreadyInProgressError) {
+                logger.warn(error.message);
+                return;
+            }
+
             logger.error('Error occurred', { error });
 
             if (dbConnection) {
